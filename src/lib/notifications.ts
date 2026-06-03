@@ -11,6 +11,7 @@ export interface NotificationPayload {
   time: string;
   depositAmount: number;
   bookingId?: string;
+  quantity?: number;
 }
 
 export interface NotificationProvider {
@@ -72,7 +73,8 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Fecha:</strong> ${payload.date}</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>⏰ Hora:</strong> ${payload.time} hs</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> Av. Del Bono 123, San Juan</p>
-          ${payload.depositAmount > 0 ? `<p style="margin: 0; font-size: 14px; color: #10b981;"><strong>💰 Seña Abonada:</strong> $${payload.depositAmount.toFixed(2)}</p>` : ''}
+          ${payload.quantity && payload.quantity > 1 ? `<p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>🐾 Cantidad de turnos/mascotas:</strong> ${payload.quantity}</p>` : ''}
+          ${payload.depositAmount > 0 ? `<p style="margin: 0; font-size: 14px; color: #10b981;"><strong>💰 Seña Abonada Total:</strong> $${payload.depositAmount.toFixed(2)}</p>` : ''}
         </div>
       `;
       break;
@@ -85,12 +87,13 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Nueva Fecha:</strong> ${payload.date}</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>⏰ Nueva Hora:</strong> ${payload.time} hs</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> Av. Del Bono 123, San Juan</p>
+          ${payload.quantity && payload.quantity > 1 ? `<p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>🐾 Cantidad de turnos/mascotas:</strong> ${payload.quantity}</p>` : ''}
         </div>
       `;
       break;
     case 'CANCELLATION':
       title = 'Turno Cancelado ❌';
-      intro = `Hola <strong>${payload.clientName}</strong>, lamentamos informarte que tu turno para el servicio de <strong>"${payload.serviceName}"</strong> programado para el día ${payload.date} a las ${payload.time} hs ha sido <strong>cancelado</strong>.`;
+      intro = `Hola <strong>${payload.clientName}</strong>, lamentamos informarte que tu turno para el servicio de <strong>"${payload.serviceName}"</strong> ${payload.quantity && payload.quantity > 1 ? `(${payload.quantity} turnos/mascotas) ` : ''}programado para el día ${payload.date} a las ${payload.time} hs ha sido <strong>cancelado</strong>.`;
       detailsHtml = payload.depositAmount > 0 ? `
         <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 20px; margin-top: 15px;">
           <p style="margin: 0; font-size: 14px; color: #b45309;">⚠️ <strong>Reembolso de Seña:</strong> Al haber abonado una seña de $${payload.depositAmount.toFixed(2)}, nos pondremos en contacto contigo a la brevedad para realizar el reembolso correspondiente.</p>
@@ -106,6 +109,7 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Fecha:</strong> ${payload.date}</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>⏰ Hora:</strong> ${payload.time} hs</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> Av. Del Bono 123, San Juan</p>
+          ${payload.quantity && payload.quantity > 1 ? `<p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>🐾 Cantidad de turnos/mascotas:</strong> ${payload.quantity}</p>` : ''}
         </div>
       `;
       break;
@@ -250,6 +254,7 @@ export class WhatsAppProvider implements NotificationProvider {
         message = `¡Hola *${payload.clientName}*! Tu turno ha sido confirmado con éxito. 🎉\n\n` +
           `📋 *Detalles del Turno:*\n` +
           `• *Servicio:* ${payload.serviceName}\n` +
+          (payload.quantity && payload.quantity > 1 ? `• *Cantidad de turnos:* ${payload.quantity}\n` : '') +
           `• *Fecha:* ${payload.date}\n` +
           `• *Hora:* ${payload.time} hs\n` +
           `• *Lugar:* Av. Del Bono 123\n` +
@@ -261,6 +266,7 @@ export class WhatsAppProvider implements NotificationProvider {
         message = `¡Hola *${payload.clientName}*! Te confirmamos que tu turno ha sido reprogramado con éxito. 🗓️\n\n` +
           `📋 *Nuevos Detalles:*\n` +
           `• *Servicio:* ${payload.serviceName}\n` +
+          (payload.quantity && payload.quantity > 1 ? `• *Cantidad de turnos:* ${payload.quantity}\n` : '') +
           `• *Nueva Fecha:* ${payload.date}\n` +
           `• *Nueva Hora:* ${payload.time} hs\n` +
           `• *Lugar:* Av. Del Bono 123\n` +
@@ -268,7 +274,7 @@ export class WhatsAppProvider implements NotificationProvider {
           `\n¡Gracias por tu paciencia y nos vemos pronto! 🐾`;
         break;
       case 'CANCELLATION':
-        message = `Hola *${payload.clientName}*.\n\nTe informamos que tu turno para *${payload.serviceName}* agendado para el día *${payload.date}* a las *${payload.time} hs* ha sido *cancelado*. ❌\n\n` +
+        message = `Hola *${payload.clientName}*.\n\nTe informamos que tu turno para *${payload.serviceName}* ${payload.quantity && payload.quantity > 1 ? `(${payload.quantity} turnos/mascotas) ` : ''}agendado para el día *${payload.date}* a las *${payload.time} hs* ha sido *cancelado*. ❌\n\n` +
           (payload.depositAmount > 0 ? `👉 Nos comunicaremos a la brevedad para realizar el reembolso correspondiente de tu seña ($${payload.depositAmount.toFixed(2)}).\n\n` : '') +
           `Quedamos a tu disposición si deseas agendar un nuevo turno en el futuro. ¡Saludos! 🐾`;
         break;
@@ -276,6 +282,7 @@ export class WhatsAppProvider implements NotificationProvider {
         message = `¡Hola *${payload.clientName}*! Te recordamos tu turno para el día de mañana. ⏰\n\n` +
           `📋 *Detalles de tu Turno:*\n` +
           `• *Servicio:* ${payload.serviceName}\n` +
+          (payload.quantity && payload.quantity > 1 ? `• *Cantidad de turnos:* ${payload.quantity}\n` : '') +
           `• *Hora:* ${payload.time} hs\n` +
           `• *Lugar:* Av. Del Bono 123\n\n` +
           `🐶🐱 ¡Te esperamos con tu mascota! Por favor, responde a este mensaje para confirmar tu asistencia.`;

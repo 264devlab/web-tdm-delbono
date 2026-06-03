@@ -131,7 +131,12 @@ export const BookingStatus: React.FC = () => {
 
       try {
         const checkPromises = candidateDays.map(async (dayStr) => {
-          const slots = await getAvailableSlots({ serviceId: currentService.id, dateStr: dayStr });
+          const slots = await getAvailableSlots({ 
+            serviceId: currentService.id, 
+            dateStr: dayStr,
+            quantity: booking.quantity || 1,
+            excludeBookingId: booking.id
+          });
           const hasSlots = slots.some(s => s.available);
           return { dayStr, hasSlots };
         });
@@ -163,7 +168,12 @@ export const BookingStatus: React.FC = () => {
     if (booking?.services && rescheduleDate) {
       setLoadingSlots(true);
       setRescheduleTime('');
-      getAvailableSlots({ serviceId: booking.services.id, dateStr: rescheduleDate })
+      getAvailableSlots({ 
+        serviceId: booking.services.id, 
+        dateStr: rescheduleDate,
+        quantity: booking.quantity || 1,
+        excludeBookingId: booking.id
+      })
         .then(slots => {
           setAvailableSlots(slots);
           setLoadingSlots(false);
@@ -192,7 +202,8 @@ export const BookingStatus: React.FC = () => {
         serviceName: booking.services.name,
         date: booking.booking_date,
         time: booking.booking_time.substring(0, 5),
-        depositAmount: booking.deposit_amount
+        depositAmount: booking.deposit_amount,
+        quantity: booking.quantity || 1
       });
 
       await fetchBooking();
@@ -227,7 +238,9 @@ export const BookingStatus: React.FC = () => {
         serviceName: booking.services.name,
         date: rescheduleDate,
         time: rescheduleTime,
-        depositAmount: booking.deposit_amount
+        depositAmount: booking.deposit_amount,
+        bookingId: booking.id,
+        quantity: booking.quantity || 1
       });
 
       await fetchBooking();
@@ -367,6 +380,10 @@ export const BookingStatus: React.FC = () => {
                 <span><strong>Servicio:</strong> {booking.services.name}</span>
               </p>
               <p className="flex items-center gap-2.5">
+                <Scissors className="h-4 w-4 text-secondary shrink-0" />
+                <span><strong>Cantidad:</strong> {booking.quantity || 1} { (booking.quantity || 1) === 1 ? 'turno' : 'turnos' }</span>
+              </p>
+              <p className="flex items-center gap-2.5">
                 <Calendar className="h-4 w-4 text-secondary shrink-0" />
                 <span><strong>Fecha:</strong> {booking.booking_date}</span>
               </p>
@@ -383,7 +400,7 @@ export const BookingStatus: React.FC = () => {
             <div className="border-t border-neutral-200/50 pt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-xs text-gray-500">
               <div className="flex justify-between font-semibold text-offblack text-sm">
                 <span>Precio Total:</span>
-                <span>${booking.services.price.toFixed(2)}</span>
+                <span>${(booking.services.price * (booking.quantity || 1)).toFixed(2)}</span>
               </div>
               {booking.deposit_amount > 0 ? (
                 <>
@@ -393,13 +410,13 @@ export const BookingStatus: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-2 mt-1">
                     <span>Restante a pagar en local:</span>
-                    <span>${(booking.services.price - booking.deposit_amount).toFixed(2)}</span>
+                    <span>${((booking.services.price * (booking.quantity || 1)) - booking.deposit_amount).toFixed(2)}</span>
                   </div>
                 </>
               ) : (
                 <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-2 mt-1">
                   <span>Restante a pagar en local:</span>
-                  <span>${booking.services.price.toFixed(2)}</span>
+                  <span>${(booking.services.price * (booking.quantity || 1)).toFixed(2)}</span>
                 </div>
               )}
             </div>

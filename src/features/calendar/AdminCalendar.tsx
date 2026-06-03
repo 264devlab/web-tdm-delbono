@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { notifications } from '../../lib/notifications';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
-import { Calendar as CalendarIcon, Clock, User, Phone, Mail, CheckCircle, XCircle, RefreshCw, CalendarRange, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, Phone, Mail, CheckCircle, XCircle, RefreshCw, CalendarRange, Plus, Scissors } from 'lucide-react';
 
 const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const MONTHS = [
@@ -61,13 +61,17 @@ interface Booking {
   services: {
     name: string;
     estimated_duration_minutes: number;
+    price?: number;
   };
+  quantity?: number;
 }
 
 interface Service {
   id: string;
   name: string;
   estimated_duration_minutes: number;
+  max_concurrent_bookings?: number;
+  price?: number;
 }
 
 export const AdminCalendar: React.FC = () => {
@@ -135,6 +139,14 @@ export const AdminCalendar: React.FC = () => {
   const [manualNotes, setManualNotes] = useState<string>('');
   const [loadingManualSlots, setLoadingManualSlots] = useState<boolean>(false);
   const [manualError, setManualError] = useState<string>('');
+  const [manualQuantity, setManualQuantity] = useState<number>(1);
+
+  const selectedServiceObj = services.find(s => s.id === manualServiceId);
+
+  // Reset manual quantity when service or date changes
+  useEffect(() => {
+    setManualQuantity(1);
+  }, [manualServiceId, manualDate]);
 
   // Weekly dates calculation
   const getWeekDates = (baseDateStr: string) => {
@@ -384,47 +396,52 @@ export const AdminCalendar: React.FC = () => {
     async function loadBookings() {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        const filterDateObj = new Date(currentDate + 'T00:00:00');
+        let query = supabase
           .from('bookings')
           .select('*, clients(*), services(*)');
+
+        if (view === 'day') {
+          query = query.eq('booking_date', currentDate);
+        } else if (view === 'week') {
+          const startOfWeek = new Date(filterDateObj);
+          const day = startOfWeek.getDay();
+          const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+          const monday = new Date(startOfWeek.setDate(diff));
+          
+          const sunday = new Date(monday);
+          sunday.setDate(monday.getDate() + 6);
+
+          const startStr = monday.toISOString().split('T')[0];
+          const endStr = sunday.toISOString().split('T')[0];
+
+          query = query.gte('booking_date', startStr).lte('booking_date', endStr);
+        } else if (view === 'month') {
+          const currentYear = filterDateObj.getFullYear();
+          const currentMonth = filterDateObj.getMonth();
+          
+          const firstDay = new Date(currentYear, currentMonth, 1);
+          const lastDay = new Date(currentYear, currentMonth + 1, 0);
+          
+          const startStr = firstDay.toISOString().split('T')[0];
+          const endStr = lastDay.toISOString().split('T')[0];
+
+          query = query.gte('booking_date', startStr).lte('booking_date', endStr);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
         if (data) {
-          const filterDateObj = new Date(currentDate + 'T00:00:00');
-          let filtered = data as Booking[];
-
-          if (view === 'day') {
-            filtered = filtered.filter(b => b.booking_date === currentDate);
-          } else if (view === 'week') {
-            const startOfWeek = new Date(filterDateObj);
-            startOfWeek.setDate(filterDateObj.getDate() - filterDateObj.getDay());
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6);
-            
-            const startStr = startOfWeek.toISOString().split('T')[0];
-            const endStr = endOfWeek.toISOString().split('T')[0];
-
-            filtered = filtered.filter(b => b.booking_date >= startStr && b.booking_date <= endStr);
-          } else if (view === 'month') {
-            const currentYear = filterDateObj.getFullYear();
-            const currentMonth = filterDateObj.getMonth(); // 0-11
-            
-            filtered = filtered.filter(b => {
-              const bDate = new Date(b.booking_date + 'T00:00:00');
-              return bDate.getFullYear() === currentYear && bDate.getMonth() === currentMonth;
-            });
-          }
-
-          // Sort by date, then time
-          filtered.sort((a, b) => {
+          const sorted = (data as Booking[]).sort((a, b) => {
             if (a.booking_date !== b.booking_date) {
               return a.booking_date.localeCompare(b.booking_date);
             }
             return a.booking_time.localeCompare(b.booking_time);
           });
 
-          setBookings(filtered);
+          setBookings(sorted);
         }
       } catch (err) {
         console.error('Error fetching bookings:', err);
@@ -438,7 +455,7 @@ export const AdminCalendar: React.FC = () => {
 
   // Load active services list for manual booking
   useEffect(() => {
-    supabase.from('services').select('id, name, estimated_duration_minutes').eq('active', true)
+    supabase.from('services').select('id, name, estimated_duration_minutes, max_concurrent_bookings, price').eq('active', true)
       .then(({ data }: any) => {
         if (data) {
           setServices(data);
@@ -451,7 +468,12 @@ export const AdminCalendar: React.FC = () => {
   useEffect(() => {
     if (selectedBooking && rescheduleDate) {
       setLoadingReschedSlots(true);
-      getAvailableSlots({ serviceId: selectedBooking.service_id, dateStr: rescheduleDate })
+      getAvailableSlots({ 
+        serviceId: selectedBooking.service_id, 
+        dateStr: rescheduleDate, 
+        quantity: selectedBooking.quantity || 1,
+        excludeBookingId: selectedBooking.id
+      })
         .then((slots: BookingSlot[]) => {
           setRescheduleSlots(slots);
           setLoadingReschedSlots(false);
@@ -463,13 +485,13 @@ export const AdminCalendar: React.FC = () => {
   useEffect(() => {
     if (manualServiceId && manualDate) {
       setLoadingManualSlots(true);
-      getAvailableSlots({ serviceId: manualServiceId, dateStr: manualDate })
+      getAvailableSlots({ serviceId: manualServiceId, dateStr: manualDate, quantity: manualQuantity })
         .then((slots: BookingSlot[]) => {
           setManualSlots(slots);
           setLoadingManualSlots(false);
         });
     }
-  }, [manualServiceId, manualDate]);
+  }, [manualServiceId, manualDate, manualQuantity]);
 
   // Handle client search for manual booking
   const handleManualEmailSearch = async () => {
@@ -560,7 +582,8 @@ export const AdminCalendar: React.FC = () => {
         date: rescheduleDate,
         time: rescheduleTime,
         depositAmount: selectedBooking.deposit_amount,
-        bookingId: selectedBooking.id
+        bookingId: selectedBooking.id,
+        quantity: selectedBooking.quantity || 1
       });
 
       // Update state
@@ -601,8 +624,23 @@ export const AdminCalendar: React.FC = () => {
       
       // Get or create client
       if (manualClientExists) {
-        const { data } = await supabase.from('clients').select('id').eq('email', manualEmail);
-        if (data && data.length > 0) finalClientId = data[0].id;
+        // Retrieve and update details if modified
+        const { data: existingClients } = await supabase.from('clients').select('*').eq('email', manualEmail);
+        if (existingClients && existingClients.length > 0) {
+          finalClientId = existingClients[0].id;
+          // Check if any fields changed
+          if (existingClients[0].first_name !== manualFirstName || 
+              existingClients[0].last_name !== manualLastName || 
+              existingClients[0].phone !== manualPhone) {
+            await supabase.from('clients')
+              .update({
+                first_name: manualFirstName,
+                last_name: manualLastName,
+                phone: manualPhone
+              })
+              .eq('id', finalClientId);
+          }
+        }
       } else {
         const { data, error } = await supabase.from('clients').insert({
           email: manualEmail,
@@ -626,7 +664,8 @@ export const AdminCalendar: React.FC = () => {
         duration: selectedServiceObj.estimated_duration_minutes,
         deposit_amount: 0, // Manual bookings do not process deposit
         status: 'CONFIRMED',
-        notes: manualNotes
+        notes: manualNotes,
+        quantity: manualQuantity
       }).select('*, clients(*), services(*)');
 
       if (bkErr) throw bkErr;
@@ -641,7 +680,8 @@ export const AdminCalendar: React.FC = () => {
           date: manualDate,
           time: manualTime,
           depositAmount: 0,
-          bookingId: newBooking[0].id
+          bookingId: newBooking[0].id,
+          quantity: manualQuantity
         });
 
         // Add to calendar state directly if matches current filters
@@ -661,6 +701,7 @@ export const AdminCalendar: React.FC = () => {
         setManualDate('');
         setManualTime('');
         setManualNotes('');
+        setManualQuantity(1);
       }
     } catch (err) {
       console.error(err);
@@ -752,6 +793,7 @@ export const AdminCalendar: React.FC = () => {
                 <h3 className="text-base font-extrabold border-b border-neutral-200 pb-2 text-offblack">{selectedBooking.services?.name}</h3>
                 <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><CalendarRange className="h-4 w-4 text-primary" /> <strong>Fecha:</strong> {selectedBooking.booking_date}</p>
                 <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Clock className="h-4 w-4 text-primary" /> <strong>Hora:</strong> {selectedBooking.booking_time.substring(0, 5)} hs ({selectedBooking.duration} min)</p>
+                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Scissors className="h-4 w-4 text-primary" /> <strong>Cantidad:</strong> {selectedBooking.quantity || 1} { (selectedBooking.quantity || 1) === 1 ? 'turno' : 'turnos' }</p>
                 <p className="text-sm text-gray-600 font-semibold flex items-center gap-2">
                   <strong>Estado Actual:</strong> 
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(selectedBooking.status)}`}>
@@ -772,7 +814,7 @@ export const AdminCalendar: React.FC = () => {
               <div className="space-y-1.5 border-t border-neutral-100 pt-4 text-gray-600 font-semibold text-sm text-left">
                 <div className="flex justify-between">
                   <span>Precio Total:</span>
-                  <span>${(selectedBooking.services as any)?.price?.toFixed(2) || '0.00'}</span>
+                  <span>${(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)).toFixed(2)}</span>
                 </div>
                 {selectedBooking.deposit_amount > 0 ? (
                   <>
@@ -782,13 +824,13 @@ export const AdminCalendar: React.FC = () => {
                     </div>
                     <div className="flex justify-between text-offblack font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
                       <span>Resta pagar en local:</span>
-                      <span>${(((selectedBooking.services as any)?.price || 0) - selectedBooking.deposit_amount).toFixed(2)}</span>
+                      <span>${((((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)) - selectedBooking.deposit_amount).toFixed(2)}</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex justify-between text-success font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
                     <span>Resta pagar en local:</span>
-                    <span>${((selectedBooking.services as any)?.price || 0).toFixed(2)}</span>
+                    <span>${(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)).toFixed(2)}</span>
                   </div>
                 )}
               </div>
@@ -1010,6 +1052,21 @@ export const AdminCalendar: React.FC = () => {
                   ))}
                 </select>
               </div>
+
+              {selectedServiceObj && (
+                <div className="flex flex-col gap-1.5 w-full">
+                  <label className="text-sm font-bold text-offblack">Cantidad de turnos / mascotas</label>
+                  <select
+                    value={manualQuantity}
+                    onChange={(e) => setManualQuantity(Number(e.target.value))}
+                    className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
+                  >
+                    {Array.from({ length: selectedServiceObj.max_concurrent_bookings || 1 }, (_, i) => i + 1).map(n => (
+                      <option key={n} value={n}>{n} {n === 1 ? 'Mascota/Turno' : 'Mascotas/Turnos'}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5 w-full">

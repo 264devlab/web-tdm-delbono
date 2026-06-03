@@ -6,6 +6,7 @@ export interface BookingSlot {
   time: string; // "HH:MM:SS" or "HH:MM"
   available: boolean;
   reason?: string;
+  remainingCapacity?: number;
 }
 
 // Convert time string to minutes since midnight (for easier arithmetic)
@@ -24,9 +25,11 @@ export function minutesToTime(minutes: number): string {
 export interface AvailabilityParams {
   serviceId: string;
   dateStr: string; // YYYY-MM-DD
+  quantity?: number;
+  excludeBookingId?: string;
 }
 
-export async function getAvailableSlots({ serviceId, dateStr }: AvailabilityParams): Promise<BookingSlot[]> {
+export async function getAvailableSlots({ serviceId, dateStr, quantity, excludeBookingId }: AvailabilityParams): Promise<BookingSlot[]> {
   try {
     // 1. Fetch Service details
     const { data: service, error: sErr } = await supabase
@@ -93,13 +96,19 @@ export async function getAvailableSlots({ serviceId, dateStr }: AvailabilityPara
     }
 
     // 5. Fetch existing bookings for this date and service
-    const { data: bookings, error: bkErr } = await supabase
+    let bookingsQuery = supabase
       .from('bookings')
       .select('*')
       .eq('booking_date', dateStr)
       .eq('service_id', serviceId)
       .neq('status', 'CANCELLED')
       .neq('status', 'NO_SHOW');
+
+    if (excludeBookingId) {
+      bookingsQuery = bookingsQuery.neq('id', excludeBookingId);
+    }
+
+    const { data: bookings, error: bkErr } = await bookingsQuery;
 
     if (bkErr) throw bkErr;
 
@@ -155,17 +164,20 @@ export async function getAvailableSlots({ serviceId, dateStr }: AvailabilityPara
 
             // Check overlap
             if (slotStart < bEnd && slotEnd > bStart) {
-              concurrentBookingsCount++;
+              concurrentBookingsCount += Number(booking.quantity || 1);
             }
           }
         }
 
-        const isAvailable = concurrentBookingsCount < s.max_concurrent_bookings;
+        const remainingCapacity = Math.max(0, s.max_concurrent_bookings - concurrentBookingsCount);
+        const reqQty = quantity || 1;
+        const isAvailable = remainingCapacity >= reqQty;
 
         slots.push({
           time: timeString.substring(0, 5), // Return "HH:MM"
           available: isAvailable,
-          reason: isAvailable ? undefined : 'Capacidad máxima alcanzada'
+          reason: isAvailable ? undefined : 'Capacidad máxima alcanzada',
+          remainingCapacity
         });
       }
     }

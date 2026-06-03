@@ -32,6 +32,7 @@ interface Service {
   enabled_friday: boolean;
   enabled_saturday: boolean;
   enabled_sunday: boolean;
+  max_concurrent_bookings: number;
 }
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -59,6 +60,12 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
   const [availableSlots, setAvailableSlots] = useState<BookingSlot[]>([]);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [loadingSlots, setLoadingSlots] = useState<boolean>(false);
+  const [bookingQuantity, setBookingQuantity] = useState<number>(1);
+
+  // Reset quantity when slot changes
+  useEffect(() => {
+    setBookingQuantity(1);
+  }, [selectedTime]);
 
   // Custom Calendar state
   const today = new Date();
@@ -112,6 +119,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
       setBookingDate('');
       setAvailableSlots([]);
       setSelectedTime('');
+      setBookingQuantity(1);
       setEmail('');
       setFirstName('');
       setLastName('');
@@ -130,6 +138,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
     if (selectedService && bookingDate) {
       setLoadingSlots(true);
       setSelectedTime('');
+      setBookingQuantity(1);
       getAvailableSlots({ serviceId: selectedService.id, dateStr: bookingDate })
         .then(slots => {
           setAvailableSlots(slots);
@@ -271,7 +280,17 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
     try {
       let finalClientId = clientId;
 
-      if (!clientExists) {
+      if (clientExists) {
+        // Update client data in case fields were modified
+        const { error } = await supabase.from('clients')
+          .update({
+            first_name: firstName,
+            last_name: lastName,
+            phone
+          })
+          .eq('id', clientId);
+        if (error) throw error;
+      } else {
         // Create new client
         const { data: newClient, error } = await supabase.from('clients').insert({
           email,
@@ -307,16 +326,21 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
     if (!selectedService) return;
     
     try {
+      const depositAmountTotal = selectedService.requires_deposit 
+        ? selectedService.deposit_amount * bookingQuantity 
+        : 0;
+
       const { data: newBooking, error } = await supabase.from('bookings').insert({
         client_id: targetClientId,
         service_id: selectedService.id,
         booking_date: bookingDate,
         booking_time: `${selectedTime}:00`,
         duration: selectedService.estimated_duration_minutes,
-        deposit_amount: selectedService.requires_deposit ? selectedService.deposit_amount : 0,
+        deposit_amount: depositAmountTotal,
         payment_id: payId !== 'direct_no_deposit' ? payId : null,
         status: 'CONFIRMED',
-        notes: `Reserva online de ${firstName} ${lastName}`
+        notes: `Reserva online de ${firstName} ${lastName}`,
+        quantity: bookingQuantity
       }).select();
 
       if (error) throw error;
@@ -330,8 +354,9 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           serviceName: selectedService.name,
           date: bookingDate,
           time: selectedTime,
-          depositAmount: selectedService.requires_deposit ? selectedService.deposit_amount : 0,
-          bookingId: newBooking[0].id
+          depositAmount: depositAmountTotal,
+          bookingId: newBooking[0].id,
+          quantity: bookingQuantity
         });
 
         setStep('success');
@@ -720,27 +745,47 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               </div>
             </div>
 
+            {selectedTime && (
+              <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 text-left">
+                <div>
+                  <h4 className="text-sm font-bold text-offblack m-0">Cantidad de turnos / mascotas</h4>
+                  <p className="text-xs text-gray-400 font-semibold mt-1">¿Para cuántas mascotas deseas agendar el servicio simultáneamente?</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={bookingQuantity}
+                    onChange={(e) => setBookingQuantity(Number(e.target.value))}
+                    className="border border-neutral-200 p-2.5 text-sm font-bold rounded-lg bg-white focus:outline-none focus:border-primary min-w-[120px]"
+                  >
+                    {Array.from({ length: availableSlots.find(s => s.time === selectedTime)?.remainingCapacity ?? (selectedService.max_concurrent_bookings ?? 1) }, (_, i) => i + 1).map(n => (
+                      <option key={n} value={n}>{n} {n === 1 ? 'Mascota' : 'Mascotas'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* Price breakdown summary */}
             <div className="border-t border-neutral-100 pt-4 mt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-sm text-left">
               <div className="flex justify-between items-center font-bold text-offblack">
-                <span>Precio del servicio:</span>
-                <span>${selectedService.price.toFixed(2)}</span>
+                <span>Precio del servicio ({bookingQuantity} {bookingQuantity === 1 ? 'turno' : 'turnos'}):</span>
+                <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
               </div>
               {selectedService.requires_deposit ? (
                 <>
                   <div className="flex justify-between items-center font-bold text-primary">
                     <span>Monto de Seña (Mercado Pago):</span>
-                    <span>${selectedService.deposit_amount.toFixed(2)}</span>
+                    <span>${(selectedService.deposit_amount * bookingQuantity).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                     <span>Restante a pagar en local:</span>
-                    <span>${(selectedService.price - selectedService.deposit_amount).toFixed(2)}</span>
+                    <span>${((selectedService.price - selectedService.deposit_amount) * bookingQuantity).toFixed(2)}</span>
                   </div>
                 </>
               ) : (
                 <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                   <span>Restante a pagar en local:</span>
-                  <span>${selectedService.price.toFixed(2)}</span>
+                  <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
                 </div>
               )}
             </div>
@@ -824,24 +869,24 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               {/* Price breakdown summary */}
               <div className="border-t border-neutral-100 pt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-sm text-left">
                 <div className="flex justify-between items-center font-bold text-offblack">
-                  <span>Precio del servicio:</span>
-                  <span>${selectedService.price.toFixed(2)}</span>
+                  <span>Precio del servicio ({bookingQuantity} {bookingQuantity === 1 ? 'turno' : 'turnos'}):</span>
+                  <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
                 </div>
                 {selectedService.requires_deposit ? (
                   <>
                     <div className="flex justify-between items-center font-bold text-primary">
                       <span>Monto de Seña (Mercado Pago):</span>
-                      <span>${selectedService.deposit_amount.toFixed(2)}</span>
+                      <span>${(selectedService.deposit_amount * bookingQuantity).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                       <span>Restante a pagar en local:</span>
-                      <span>${(selectedService.price - selectedService.deposit_amount).toFixed(2)}</span>
+                      <span>${((selectedService.price - selectedService.deposit_amount) * bookingQuantity).toFixed(2)}</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                     <span>Restante a pagar en local:</span>
-                    <span>${selectedService.price.toFixed(2)}</span>
+                    <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
                   </div>
                 )}
               </div>
@@ -875,23 +920,23 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           </CardHeader>
           <CardContent className="py-6 text-center space-y-6">
             <div className="max-w-md mx-auto space-y-4">
-              <h4 className="text-lg font-bold text-offblack">Monto de la Seña a Pagar:</h4>
+              <h4 className="text-lg font-bold text-offblack">Monto de la Seña a Pagar ({bookingQuantity} {bookingQuantity === 1 ? 'turno' : 'turnos'}):</h4>
               <div className="text-3xl font-extrabold text-primary bg-neutral-50 border border-neutral-200 py-4 rounded-xl tracking-tight">
-                ${selectedService.deposit_amount.toFixed(2)}
+                ${(selectedService.deposit_amount * bookingQuantity).toFixed(2)}
               </div>
 
               <div className="bg-neutral-50/50 p-4 rounded-xl border border-neutral-200 text-xs text-left space-y-2 text-gray-500 font-semibold">
                 <div className="flex justify-between border-b border-neutral-200 pb-1.5">
                   <span>Precio del Servicio:</span>
-                  <span>${selectedService.price.toFixed(2)}</span>
+                  <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between border-b border-neutral-200 pb-1.5 text-primary">
                   <span>Seña a abonar:</span>
-                  <span>-${selectedService.deposit_amount.toFixed(2)}</span>
+                  <span>-${(selectedService.deposit_amount * bookingQuantity).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-success font-extrabold text-sm">
                   <span>Restante a pagar en local:</span>
-                  <span>${(selectedService.price - selectedService.deposit_amount).toFixed(2)}</span>
+                  <span>${((selectedService.price - selectedService.deposit_amount) * bookingQuantity).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -940,6 +985,10 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                   <span><strong>Servicio:</strong> {selectedService.name}</span>
                 </p>
                 <p className="flex items-center gap-2.5">
+                  <Scissors className="h-4 w-4 text-secondary flex-shrink-0" /> 
+                  <span><strong>Cantidad de turnos / mascotas:</strong> {bookingQuantity}</span>
+                </p>
+                <p className="flex items-center gap-2.5">
                   <Calendar className="h-4 w-4 text-secondary flex-shrink-0" /> 
                   <span><strong>Fecha:</strong> {bookingDate}</span>
                 </p>
@@ -956,23 +1005,23 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 <div className="border-t border-neutral-200/50 pt-2.5 mt-2 space-y-1.5 text-xs text-gray-500">
                   <div className="flex justify-between">
                     <span>Precio Total:</span>
-                    <span>${selectedService.price.toFixed(2)}</span>
+                    <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
                   </div>
                   {selectedService.requires_deposit ? (
                     <>
                       <div className="flex justify-between text-success">
                         <span>Seña Abonada (MP):</span>
-                        <span>-${selectedService.deposit_amount.toFixed(2)} (Ref: {paymentId})</span>
+                        <span>-${(selectedService.deposit_amount * bookingQuantity).toFixed(2)} (Ref: {paymentId})</span>
                       </div>
                       <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-1.5">
                         <span>Restante a pagar en local:</span>
-                        <span>${(selectedService.price - selectedService.deposit_amount).toFixed(2)}</span>
+                        <span>${((selectedService.price - selectedService.deposit_amount) * bookingQuantity).toFixed(2)}</span>
                       </div>
                     </>
                   ) : (
                     <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-1.5">
                       <span>Restante a pagar en local:</span>
-                      <span>${selectedService.price.toFixed(2)}</span>
+                      <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
                     </div>
                   )}
                 </div>
@@ -1049,6 +1098,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                     setSelectedService(null);
                     setBookingDate('');
                     setSelectedTime('');
+                    setBookingQuantity(1);
                     setEmail('');
                     setFirstName('');
                     setLastName('');
