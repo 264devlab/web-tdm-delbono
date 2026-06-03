@@ -21,7 +21,9 @@ const pino = require('pino');
 // ─── Config ──────────────────────────────────────────────────────────────────
 const PORT = process.env.WA_SERVER_PORT || 3001;
 const SESSION_DIR = path.join(__dirname, 'wa_session');
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*';
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGINS !== '*' 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : '*';
 const WA_API_KEY = process.env.WA_API_KEY || null;
 const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_Yu9J2Bjp_AAZSvJQpUvcKMKSftCEs66p9';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <noreply@264devlab.com.ar>';
