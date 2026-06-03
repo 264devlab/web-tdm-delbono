@@ -127,7 +127,7 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
               <tr>
                 <td style="background-color: #d97706; padding: 30px; text-align: center;">
                   <div style="display: inline-block; background-color: #ffffff; border-radius: 50%; padding: 12px; margin-bottom: 12px;">
-                    <img src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=128&auto=format&fit=crop&q=80" alt="Del Bono Logo" style="width: 48px; height: 48px; border-radius: 50%; display: block; object-fit: cover;">
+                    <img src="${window.location.origin}/logo.png" alt="Del Bono Logo" style="width: 48px; height: 48px; border-radius: 50%; display: block; object-fit: cover;">
                   </div>
                   <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">Tienda de Mascotas Del Bono</h1>
                   <p style="margin: 4px 0 0 0; color: #fef3c7; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Servicios & Turnos</p>

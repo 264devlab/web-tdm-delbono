@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Input } from '../../components/ui/Input';
 import { notifications } from '../../lib/notifications';
 import { downloadICSFile, getGoogleCalendarUrl } from '../../lib/calendar';
-import { Calendar, Clock, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, ChevronLeft, Sparkles, Scissors, User, Mail } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, ChevronLeft, Scissors, User, Mail } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -82,7 +82,13 @@ export const BookingLanding: React.FC = () => {
       const { data: catData } = await supabase.from('categories').select('*').eq('active', true);
       const { data: servData } = await supabase.from('services').select('*').eq('active', true);
       
-      if (catData) setCategories(catData);
+      if (catData) {
+        setCategories(catData);
+        if (catData.length === 1) {
+          setSelectedCategory(catData[0].id);
+          setStep('service');
+        }
+      }
       if (servData) setServices(servData);
     }
     loadData();
@@ -91,8 +97,13 @@ export const BookingLanding: React.FC = () => {
   // 2. Listen to reset event from header/logo
   useEffect(() => {
     const handleReset = () => {
-      setStep('category');
-      setSelectedCategory(null);
+      if (categories.length === 1) {
+        setStep('service');
+        setSelectedCategory(categories[0].id);
+      } else {
+        setStep('category');
+        setSelectedCategory(null);
+      }
       setSelectedService(null);
       setBookingDate('');
       setAvailableSlots([]);
@@ -108,7 +119,7 @@ export const BookingLanding: React.FC = () => {
     };
     window.addEventListener('reset_booking_flow', handleReset);
     return () => window.removeEventListener('reset_booking_flow', handleReset);
-  }, []);
+  }, [categories]);
 
   // 3. Refresh available slots whenever date or service changes
   useEffect(() => {
@@ -378,19 +389,35 @@ export const BookingLanding: React.FC = () => {
 
   // Helper for progress indicator step values
   const getStepInfo = () => {
-    switch (step) {
-      case 'category':
-        return { num: 1, label: 'Categoría' };
-      case 'service':
-        return { num: 2, label: 'Servicio' };
-      case 'date_time':
-        return { num: 3, label: 'Fecha y Hora' };
-      case 'client_info':
-        return { num: 4, label: 'Tus Datos' };
-      case 'payment_sim':
-      case 'success':
-      default:
-        return { num: 5, label: 'Confirmación' };
+    const hasMultipleCategories = categories.length > 1;
+    if (hasMultipleCategories) {
+      switch (step) {
+        case 'category':
+          return { num: 1, label: 'Categoría' };
+        case 'service':
+          return { num: 2, label: 'Servicio' };
+        case 'date_time':
+          return { num: 3, label: 'Fecha y Hora' };
+        case 'client_info':
+          return { num: 4, label: 'Tus Datos' };
+        case 'payment_sim':
+        case 'success':
+        default:
+          return { num: 5, label: 'Confirmación' };
+      }
+    } else {
+      switch (step) {
+        case 'service':
+          return { num: 1, label: 'Servicio' };
+        case 'date_time':
+          return { num: 2, label: 'Fecha y Hora' };
+        case 'client_info':
+          return { num: 3, label: 'Tus Datos' };
+        case 'payment_sim':
+        case 'success':
+        default:
+          return { num: 4, label: 'Confirmación' };
+      }
     }
   };
   const activeStep = getStepInfo();
@@ -400,25 +427,28 @@ export const BookingLanding: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 text-left">
       {/* Visual Header */}
-      <div className="mb-8 border-b border-neutral-100 pb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-offblack m-0">Reserva de Turnos</h1>
-          <p className="text-gray-400 mt-1 font-semibold text-sm">Tienda de Mascotas Del Bono</p>
-        </div>
-        <div className="bg-primary/10 text-primary border border-primary/15 py-1.5 px-3.5 text-xs font-bold flex items-center gap-1.5 rounded-full">
-          <Sparkles className="h-3.5 w-3.5" /> Reservas Online
-        </div>
+      <div className="mb-8 border-b border-neutral-100 pb-6">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-offblack m-0">Reserva de Turnos</h1>
+        <p className="text-gray-400 mt-1 font-semibold text-sm">Tienda de Mascotas Del Bono</p>
       </div>
 
       {/* Progress Tracker - Desktop */}
-      <div className="hidden sm:grid grid-cols-5 gap-2 mb-8 text-center text-xs font-bold">
-        {[
-          { label: '1. Categoría', active: step === 'category' },
-          { label: '2. Servicio', active: step === 'service' },
-          { label: '3. Fecha y Hora', active: step === 'date_time' },
-          { label: '4. Tus Datos', active: step === 'client_info' },
-          { label: '5. Confirmado', active: step === 'payment_sim' || step === 'success' }
-        ].map((s, idx) => (
+      <div className={`hidden sm:grid ${categories.length > 1 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mb-8 text-center text-xs font-bold`}>
+        {(categories.length > 1
+          ? [
+              { label: '1. Categoría', active: step === 'category' },
+              { label: '2. Servicio', active: step === 'service' },
+              { label: '3. Fecha y Hora', active: step === 'date_time' },
+              { label: '4. Tus Datos', active: step === 'client_info' },
+              { label: '5. Confirmado', active: step === 'payment_sim' || step === 'success' }
+            ]
+          : [
+              { label: '1. Servicio', active: step === 'service' },
+              { label: '2. Fecha y Hora', active: step === 'date_time' },
+              { label: '3. Tus Datos', active: step === 'client_info' },
+              { label: '4. Confirmado', active: step === 'payment_sim' || step === 'success' }
+            ]
+        ).map((s, idx) => (
           <div 
             key={idx}
             className={`py-2 px-1.5 rounded-lg transition-all border ${
@@ -435,13 +465,13 @@ export const BookingLanding: React.FC = () => {
       {/* Progress Tracker - Mobile */}
       <div className="block sm:hidden mb-8">
         <div className="flex justify-between items-center text-xs font-bold text-gray-500 mb-2">
-          <span>Paso {activeStep.num} de 5</span>
+          <span>Paso {activeStep.num} de {categories.length > 1 ? 5 : 4}</span>
           <span className="text-primary uppercase tracking-wider">{activeStep.label}</span>
         </div>
         <div className="w-full bg-neutral-200 h-2 rounded-full overflow-hidden">
           <div 
             className="bg-primary h-full transition-all duration-300"
-            style={{ width: `${(activeStep.num / 5) * 100}%` }}
+            style={{ width: `${(activeStep.num / (categories.length > 1 ? 5 : 4)) * 100}%` }}
           />
         </div>
       </div>
@@ -485,13 +515,15 @@ export const BookingLanding: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-offblack">Selecciona un Servicio</h3>
-            <Button 
-              variant="ghost" 
-              onClick={() => setStep('category')} 
-              className="text-xs py-1.5 px-3 border border-neutral-200 rounded-lg flex items-center gap-1 hover:bg-neutral-50"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" /> Atrás
-            </Button>
+            {categories.length > 1 && (
+              <Button 
+                variant="ghost" 
+                onClick={() => setStep('category')} 
+                className="text-xs py-1.5 px-3 border border-neutral-200 rounded-lg flex items-center gap-1 hover:bg-neutral-50"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Atrás
+              </Button>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -1003,8 +1035,13 @@ export const BookingLanding: React.FC = () => {
                 <Button 
                   variant="primary" 
                   onClick={() => {
-                    setStep('category');
-                    setSelectedCategory(null);
+                    if (categories.length === 1) {
+                      setStep('service');
+                      setSelectedCategory(categories[0].id);
+                    } else {
+                      setStep('category');
+                      setSelectedCategory(null);
+                    }
                     setSelectedService(null);
                     setBookingDate('');
                     setSelectedTime('');

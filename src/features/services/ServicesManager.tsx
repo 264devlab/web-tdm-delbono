@@ -587,211 +587,216 @@ export const ServicesManager: React.FC = () => {
         isOpen={isServiceModalOpen}
         onClose={() => setIsServiceModalOpen(false)}
         title={editingService ? 'Editar Servicio' : 'Crear Nuevo Servicio'}
+        size="lg"
       >
         <form onSubmit={handleServiceSubmit} className="space-y-6 text-left">
-          
-          {/* SECTION 1: INFORMACION BASICA */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
-              <Info className="h-4 w-4" /> Información Básica
-            </h4>
-            
-            <Input
-              label="Nombre del Servicio"
-              value={sName}
-              onChange={(e) => setSName(e.target.value)}
-              placeholder="Ej. Baño Standard"
-              required
-            />
-
-            <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-sm font-bold text-offblack">Categoría</label>
-              <select
-                value={sCategoryId}
-                onChange={(e) => setSCategoryId(e.target.value)}
-                className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* COLUMN 1: BASIC INFORMATION */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
+                <Info className="h-4 w-4" /> Información Básica
+              </h4>
+              
+              <Input
+                label="Nombre del Servicio"
+                value={sName}
+                onChange={(e) => setSName(e.target.value)}
+                placeholder="Ej. Baño Standard"
                 required
-              >
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-sm font-bold text-offblack">Descripción</label>
-              <textarea
-                value={sDescription}
-                onChange={(e) => setSDescription(e.target.value)}
-                placeholder="Detalles sobre el servicio..."
-                className="border border-neutral-200 p-2.5 rounded-lg w-full h-16 text-sm focus:outline-none focus:border-primary"
               />
-            </div>
 
-            {/* General Status Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 border border-neutral-200/60">
-              <div>
-                <span className="text-sm font-bold text-offblack block">Servicio Activo</span>
-                <span className="text-xs text-gray-400">Determina si los clientes pueden reservar este servicio</span>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-bold text-offblack">Categoría</label>
+                <select
+                  value={sCategoryId}
+                  onChange={(e) => setSCategoryId(e.target.value)}
+                  className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
+                  required
+                >
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
-              <button
-                type="button"
-                onClick={() => setSActive(!sActive)}
-                className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  sActive ? 'bg-success' : 'bg-neutral-200'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                    sActive ? 'translate-x-5.5' : 'translate-x-0'
-                  }`}
+
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-bold text-offblack">Descripción</label>
+                <textarea
+                  value={sDescription}
+                  onChange={(e) => setSDescription(e.target.value)}
+                  placeholder="Detalles sobre el servicio..."
+                  className="border border-neutral-200 p-2.5 rounded-lg w-full h-24 text-sm focus:outline-none focus:border-primary"
                 />
-              </button>
-            </div>
-          </div>
+              </div>
 
-          {/* SECTION 2: PARAMETROS NUMERICOS */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
-              <Sliders className="h-4 w-4" /> Parámetros de Duración y Costo
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Input
-                label="Duración (Minutos)"
-                type="number"
-                value={sDuration}
-                onChange={(e) => setSDuration(Number(e.target.value))}
-                min={5}
-                max={300}
-                required
-              />
-              <Input
-                label="Precio Total ($ ARS)"
-                type="number"
-                value={sPrice}
-                onChange={(e) => setSPrice(Number(e.target.value))}
-                min={0}
-                required
-              />
-              <Input
-                label="Capacidad Simultánea"
-                type="number"
-                value={sMaxConcurrent}
-                onChange={(e) => setSMaxConcurrent(Number(e.target.value))}
-                min={1}
-                required
-              />
-            </div>
-          </div>
-
-          {/* SECTION 3: DIAS DE DISPONIBILIDAD */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
-              <Calendar className="h-4 w-4" /> Días de Disponibilidad
-            </h4>
-            <div className="flex flex-wrap gap-2.5 justify-start pt-1">
-              {[
-                { label: 'L', val: sEnabledMon, setter: setSEnabledMon, full: 'Lunes' },
-                { label: 'M', val: sEnabledTue, setter: setSEnabledTue, full: 'Martes' },
-                { label: 'M', val: sEnabledWed, setter: setSEnabledWed, full: 'Miércoles' },
-                { label: 'J', val: sEnabledThu, setter: setSEnabledThu, full: 'Jueves' },
-                { label: 'V', val: sEnabledFri, setter: setSEnabledFri, full: 'Viernes' },
-                { label: 'S', val: sEnabledSat, setter: setSEnabledSat, full: 'Sábado' },
-                { label: 'D', val: sEnabledSun, setter: setSEnabledSun, full: 'Domingo' }
-              ].map((day, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => day.setter(!day.val)}
-                  title={day.full}
-                  className={`w-9.5 h-9.5 text-xs font-bold flex items-center justify-center rounded-full border transition-all cursor-pointer hover:scale-[1.04] active:scale-[0.96] ${
-                    day.val 
-                      ? 'bg-primary text-white border-transparent shadow-md shadow-primary/10' 
-                      : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
-                  }`}
-                >
-                  {day.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* SECTION 4: POLITICAS */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
-              <Shield className="h-4 w-4" /> Políticas de Reserva y Cancelación
-            </h4>
-            
-            {/* Seña settings */}
-            <div className="bg-amber-50/20 border border-warning/10 p-4 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
+              {/* General Status Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 border border-neutral-200/60">
                 <div>
-                  <span className="text-sm font-bold text-offblack block">Requiere pago de Seña</span>
-                  <span className="text-xs text-gray-400">Solicita un abono parcial por Mercado Pago para confirmar</span>
+                  <span className="text-sm font-bold text-offblack block">Servicio Activo</span>
+                  <span className="text-xs text-gray-400">Determina si los clientes pueden reservar</span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSRequiresDeposit(!sRequiresDeposit)}
+                  onClick={() => setSActive(!sActive)}
                   className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    sRequiresDeposit ? 'bg-primary' : 'bg-neutral-200'
+                    sActive ? 'bg-success' : 'bg-neutral-200'
                   }`}
                 >
                   <span
                     className={`pointer-events-none inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                      sRequiresDeposit ? 'translate-x-5.5' : 'translate-x-0'
+                      sActive ? 'translate-x-5.5' : 'translate-x-0'
                     }`}
                   />
                 </button>
               </div>
-              
-              {sRequiresDeposit && (
-                <div className="pt-2">
-                  <Input
-                    label="Monto de la Seña ($ ARS)"
-                    type="number"
-                    value={sDepositAmount}
-                    onChange={(e) => setSDepositAmount(Number(e.target.value))}
-                    min={1}
-                    required
-                  />
-                </div>
-              )}
             </div>
 
-            {/* Rescheduling settings */}
-            <div className="bg-secondary/5 border border-secondary/10 p-4 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-bold text-offblack block">Permitir Reprogramación</span>
-                  <span className="text-xs text-gray-400">Permite al cliente reagendar su turno desde su panel</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSAllowReschedule(!sAllowReschedule)}
-                  className={`relative inline-flex h-6.5 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    sAllowReschedule ? 'bg-secondary' : 'bg-neutral-200'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                      sAllowReschedule ? 'translate-x-5.5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-              
-              {sAllowReschedule && (
-                <div className="pt-2">
+            {/* COLUMN 2: PARAMETERS & POLICIES */}
+            <div className="space-y-6">
+              {/* Numeric parameters */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
+                  <Sliders className="h-4 w-4" /> Parámetros y Costo
+                </h4>
+                <div className="grid grid-cols-3 gap-2">
                   <Input
-                    label="Límite de anticipación (Horas antes del turno)"
+                    label="Duración (Min)"
                     type="number"
-                    value={sRescheduleLimit}
-                    onChange={(e) => setSRescheduleLimit(Number(e.target.value))}
+                    value={sDuration}
+                    onChange={(e) => setSDuration(Number(e.target.value))}
+                    min={5}
+                    max={300}
+                    required
+                  />
+                  <Input
+                    label="Precio ($)"
+                    type="number"
+                    value={sPrice}
+                    onChange={(e) => setSPrice(Number(e.target.value))}
+                    min={0}
+                    required
+                  />
+                  <Input
+                    label="Simultáneos"
+                    type="number"
+                    value={sMaxConcurrent}
+                    onChange={(e) => setSMaxConcurrent(Number(e.target.value))}
                     min={1}
                     required
                   />
                 </div>
-              )}
+              </div>
+
+              {/* Days of availability */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4" /> Días Habilitados
+                </h4>
+                <div className="flex flex-wrap gap-1.5 justify-start">
+                  {[
+                    { label: 'L', val: sEnabledMon, setter: setSEnabledMon, full: 'Lunes' },
+                    { label: 'M', val: sEnabledTue, setter: setSEnabledTue, full: 'Martes' },
+                    { label: 'M', val: sEnabledWed, setter: setSEnabledWed, full: 'Miércoles' },
+                    { label: 'J', val: sEnabledThu, setter: setSEnabledThu, full: 'Jueves' },
+                    { label: 'V', val: sEnabledFri, setter: setSEnabledFri, full: 'Viernes' },
+                    { label: 'S', val: sEnabledSat, setter: setSEnabledSat, full: 'Sábado' },
+                    { label: 'D', val: sEnabledSun, setter: setSEnabledSun, full: 'Domingo' }
+                  ].map((day, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => day.setter(!day.val)}
+                      title={day.full}
+                      className={`w-8 h-8 text-xs font-bold flex items-center justify-center rounded-full border transition-all cursor-pointer hover:scale-[1.04] active:scale-[0.96] ${
+                        day.val 
+                          ? 'bg-primary text-white border-transparent shadow-sm' 
+                          : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {day.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Policies */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
+                  <Shield className="h-4 w-4" /> Políticas de Reserva
+                </h4>
+                
+                {/* Deposit setting */}
+                <div className="bg-amber-50/20 border border-warning/10 p-3.5 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-offblack block">Requiere Seña</span>
+                      <span className="text-[10px] text-gray-400">Solicita abono parcial por Mercado Pago</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSRequiresDeposit(!sRequiresDeposit)}
+                      className={`relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        sRequiresDeposit ? 'bg-primary' : 'bg-neutral-200'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          sRequiresDeposit ? 'translate-x-4.5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  
+                  {sRequiresDeposit && (
+                    <div className="pt-1">
+                      <Input
+                        label="Monto de la Seña ($ ARS)"
+                        type="number"
+                        value={sDepositAmount}
+                        onChange={(e) => setSDepositAmount(Number(e.target.value))}
+                        min={1}
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Rescheduling setting */}
+                <div className="bg-secondary/5 border border-secondary/10 p-3.5 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-offblack block">Permitir Reprogramación</span>
+                      <span className="text-[10px] text-gray-400">Permite al cliente reagendar su turno</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSAllowReschedule(!sAllowReschedule)}
+                      className={`relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        sAllowReschedule ? 'bg-secondary' : 'bg-neutral-200'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          sAllowReschedule ? 'translate-x-4.5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  
+                  {sAllowReschedule && (
+                    <div className="pt-1">
+                      <Input
+                        label="Límite de anticipación (Horas antes)"
+                        type="number"
+                        value={sRescheduleLimit}
+                        onChange={(e) => setSRescheduleLimit(Number(e.target.value))}
+                        min={1}
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -811,6 +816,7 @@ export const ServicesManager: React.FC = () => {
         isOpen={isHoursModalOpen}
         onClose={() => setIsHoursModalOpen(false)}
         title={selectedHoursService ? `Configurar disponibilidad - ${selectedHoursService.name}` : 'Configurar Horarios'}
+        size="lg"
       >
         {hoursError && (
           <div className="bg-danger/10 border border-danger/20 p-3 rounded-lg text-xs font-bold text-danger mb-4">
@@ -826,107 +832,126 @@ export const ServicesManager: React.FC = () => {
               Define los rangos horarios habilitados para cada día de la semana. Los días sin rangos usarán el horario estándar.
             </p>
 
-            {/* Days of the week tabs */}
-            <div className="grid grid-cols-7 gap-1 border-b border-neutral-100 pb-3">
-              {DAYS_OF_WEEK.map(d => (
-                <button
-                  key={d.value}
-                  type="button"
-                  onClick={() => setSelectedDayTab(d.value)}
-                  className={`py-2 text-xs font-bold text-center rounded-lg border transition-all cursor-pointer ${
-                    selectedDayTab === d.value
-                      ? 'bg-primary text-white border-transparent shadow-sm'
-                      : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
-                  }`}
-                >
-                  {d.name.substring(0, 3)}
-                </button>
-              ))}
-            </div>
-
-            {/* Current day shifts listing */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-offblack text-left">
-                Horarios habilitados para el día {DAYS_OF_WEEK.find(d => d.value === selectedDayTab)?.name}:
-              </h3>
-
-              {hoursList.filter(h => h.day_of_week === selectedDayTab).length === 0 ? (
-                <p className="text-xs text-gray-400 font-semibold italic bg-neutral-50 p-4 border border-dashed border-neutral-200 rounded-xl text-center">
-                  Sin horarios específicos. (Por defecto: 09:00 a 13:00 y 16:00 a 20:00).
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {hoursList.map((h, idx) => {
-                    if (h.day_of_week !== selectedDayTab) return null;
-                    return (
-                      <div key={idx} className="flex justify-between items-center bg-white border border-neutral-200 p-3 rounded-xl shadow-sm">
-                        <span className="text-sm font-bold text-offblack">
-                          {h.start_time.substring(0, 5)} hs a {h.end_time.substring(0, 5)} hs
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => deleteShift(idx)}
-                          className="p-1.5 min-w-0 border-none hover:bg-neutral-50 rounded-lg text-danger"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column: Day Selection & Current Shifts */}
+              <div className="space-y-4 border-r border-neutral-100 pr-0 md:pr-6">
+                <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4" /> Días y Horarios Activos
+                </h4>
+                
+                {/* Days of the week tabs */}
+                <div className="grid grid-cols-7 gap-1 pb-1">
+                  {DAYS_OF_WEEK.map(d => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setSelectedDayTab(d.value)}
+                      className={`py-2 text-[10px] md:text-xs font-bold text-center rounded-lg border transition-all cursor-pointer ${
+                        selectedDayTab === d.value
+                          ? 'bg-primary text-white border-transparent shadow-sm'
+                          : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {d.name.substring(0, 3)}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
 
-            {/* Form to add a new shift to the current day */}
-            <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-xl space-y-3">
-              <h4 className="text-xs font-bold uppercase text-offblack tracking-wider text-left">Agregar Rango Horario</h4>
-              <div className="flex gap-2 items-end">
-                <div className="flex-1 text-left">
-                  <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">Hora Inicio</label>
-                  <input
-                    type="time"
-                    value={newStartTime}
-                    onChange={(e) => setNewStartTime(e.target.value)}
-                    className="w-full border border-neutral-200 p-2 rounded-lg text-sm bg-white font-semibold focus:outline-none focus:border-primary"
-                  />
+                {/* Current day shifts listing */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-offblack text-left">
+                    Horarios habilitados para el día {DAYS_OF_WEEK.find(d => d.value === selectedDayTab)?.name}:
+                  </h3>
+
+                  {hoursList.filter(h => h.day_of_week === selectedDayTab).length === 0 ? (
+                    <p className="text-xs text-gray-400 font-semibold italic bg-neutral-50 p-4 border border-dashed border-neutral-200 rounded-xl text-center">
+                      Sin horarios específicos. (Por defecto: 09:00 a 13:00 y 16:00 a 20:00).
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                      {hoursList.map((h, idx) => {
+                        if (h.day_of_week !== selectedDayTab) return null;
+                        return (
+                          <div key={idx} className="flex justify-between items-center bg-white border border-neutral-200 p-2.5 rounded-xl shadow-sm">
+                            <span className="text-sm font-bold text-offblack">
+                              {h.start_time.substring(0, 5)} hs a {h.end_time.substring(0, 5)} hs
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => deleteShift(idx)}
+                              className="p-1.5 min-w-0 border-none hover:bg-neutral-50 rounded-lg text-danger"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                <div className="flex-1 text-left">
-                  <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">Hora Fin</label>
-                  <input
-                    type="time"
-                    value={newEndTime}
-                    onChange={(e) => setNewEndTime(e.target.value)}
-                    className="w-full border border-neutral-200 p-2 rounded-lg text-sm bg-white font-semibold focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => addShift(selectedDayTab)}
-                  className="py-2.5 px-3 rounded-lg flex items-center justify-center"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
               </div>
-            </div>
 
-            {/* Utility buttons for copying */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              <button
-                type="button"
-                onClick={copyShiftsToWeekdays}
-                className="text-[10px] uppercase font-bold py-1.5 px-3 border border-neutral-200 bg-white text-offblack rounded-lg cursor-pointer hover:bg-neutral-50 transition-all"
-              >
-                Copiar a Lunes-Viernes
-              </button>
-              <button
-                type="button"
-                onClick={copyShiftsToAllDays}
-                className="text-[10px] uppercase font-bold py-1.5 px-3 border border-neutral-200 bg-white text-offblack rounded-lg cursor-pointer hover:bg-neutral-50 transition-all"
-              >
-                Copiar a Todos los Días
-              </button>
+              {/* Right Column: Add New Shift & Copy utilities */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
+                  <Clock className="h-4 w-4" /> Acciones y Copias
+                </h4>
+
+                {/* Form to add a new shift to the current day */}
+                <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-xl space-y-3">
+                  <h4 className="text-xs font-bold uppercase text-offblack tracking-wider text-left">Agregar Rango Horario</h4>
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1 text-left">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">Hora Inicio</label>
+                      <input
+                        type="time"
+                        value={newStartTime}
+                        onChange={(e) => setNewStartTime(e.target.value)}
+                        className="w-full border border-neutral-200 p-2 rounded-lg text-sm bg-white font-semibold focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 block mb-1">Hora Fin</label>
+                      <input
+                        type="time"
+                        value={newEndTime}
+                        onChange={(e) => setNewEndTime(e.target.value)}
+                        className="w-full border border-neutral-200 p-2 rounded-lg text-sm bg-white font-semibold focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => addShift(selectedDayTab)}
+                      className="py-2.5 px-3 rounded-lg flex items-center justify-center cursor-pointer hover:bg-neutral-100"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Utility buttons for copying */}
+                <div className="space-y-2.5 pt-1">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Copiar configuración</span>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={copyShiftsToWeekdays}
+                      className="text-xs font-bold py-2.5 px-3 border border-neutral-200 bg-white text-offblack rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-all text-left flex items-center gap-2"
+                    >
+                      📅 Copiar a Lunes-Viernes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copyShiftsToAllDays}
+                      className="text-xs font-bold py-2.5 px-3 border border-neutral-200 bg-white text-offblack rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-all text-left flex items-center gap-2"
+                    >
+                      🔁 Copiar a Todos los Días
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Modal Actions */}

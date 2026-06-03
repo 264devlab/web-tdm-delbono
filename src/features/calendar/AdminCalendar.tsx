@@ -694,157 +694,182 @@ export const AdminCalendar: React.FC = () => {
           setSelectedBooking(null);
         }}
         title="Gestión de Turno"
+        size="lg"
       >
         {selectedBooking && (
-          <div className="space-y-6">
-            {/* Booking Overview info */}
-            <div className="bg-neutral-50 border border-neutral-100 p-4 rounded-xl space-y-2">
-              <h3 className="text-base font-extrabold border-b border-neutral-200 pb-2 text-offblack">{selectedBooking.services?.name}</h3>
-              <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><CalendarRange className="h-4 w-4 text-primary" /> <strong>Fecha:</strong> {selectedBooking.booking_date}</p>
-              <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Clock className="h-4 w-4 text-primary" /> <strong>Hora:</strong> {selectedBooking.booking_time.substring(0, 5)} hs ({selectedBooking.duration} min)</p>
-              <p className="text-sm text-gray-600 font-semibold flex items-center gap-2">
-                <strong>Estado Actual:</strong> 
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(selectedBooking.status)}`}>
-                  {translateStatus(selectedBooking.status)}
-                </span>
-              </p>
-            </div>
-
-            {/* Client Info */}
-            <div className="space-y-2.5">
-              <h4 className="font-extrabold text-xs text-gray-400 border-b border-neutral-100 pb-1.5 uppercase">Datos del Cliente</h4>
-              <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><User className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.first_name} {selectedBooking.clients?.last_name}</p>
-              <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><Phone className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.phone}</p>
-              <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><Mail className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.email}</p>
-            </div>
-
-            {/* Price Details */}
-            <div className="space-y-1.5 border-t border-neutral-100 pt-4 text-gray-600 font-semibold text-sm text-left">
-              <div className="flex justify-between">
-                <span>Precio Total:</span>
-                <span>${(selectedBooking.services as any)?.price?.toFixed(2) || '0.00'}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+            {/* Left Column: Details & Client & Pricing */}
+            <div className="space-y-5 border-r border-neutral-100 pr-0 md:pr-6">
+              {/* Booking Overview info */}
+              <div className="bg-neutral-50 border border-neutral-100 p-4 rounded-xl space-y-2">
+                <h3 className="text-base font-extrabold border-b border-neutral-200 pb-2 text-offblack">{selectedBooking.services?.name}</h3>
+                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><CalendarRange className="h-4 w-4 text-primary" /> <strong>Fecha:</strong> {selectedBooking.booking_date}</p>
+                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Clock className="h-4 w-4 text-primary" /> <strong>Hora:</strong> {selectedBooking.booking_time.substring(0, 5)} hs ({selectedBooking.duration} min)</p>
+                <p className="text-sm text-gray-600 font-semibold flex items-center gap-2">
+                  <strong>Estado Actual:</strong> 
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(selectedBooking.status)}`}>
+                    {translateStatus(selectedBooking.status)}
+                  </span>
+                </p>
               </div>
-              {selectedBooking.deposit_amount > 0 ? (
-                <>
-                  <div className="flex justify-between text-success">
-                    <span>Seña Abonada (MP):</span>
-                    <span>-${selectedBooking.deposit_amount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-offblack font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
+
+              {/* Client Info */}
+              <div className="space-y-2.5">
+                <h4 className="font-extrabold text-xs text-gray-400 border-b border-neutral-100 pb-1.5 uppercase">Datos del Cliente</h4>
+                <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><User className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.first_name} {selectedBooking.clients?.last_name}</p>
+                <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><Phone className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.phone}</p>
+                <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><Mail className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.email}</p>
+              </div>
+
+              {/* Price Details */}
+              <div className="space-y-1.5 border-t border-neutral-100 pt-4 text-gray-600 font-semibold text-sm text-left">
+                <div className="flex justify-between">
+                  <span>Precio Total:</span>
+                  <span>${(selectedBooking.services as any)?.price?.toFixed(2) || '0.00'}</span>
+                </div>
+                {selectedBooking.deposit_amount > 0 ? (
+                  <>
+                    <div className="flex justify-between text-success">
+                      <span>Seña Abonada (MP):</span>
+                      <span>-${selectedBooking.deposit_amount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-offblack font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
+                      <span>Resta pagar en local:</span>
+                      <span>${(((selectedBooking.services as any)?.price || 0) - selectedBooking.deposit_amount).toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between text-success font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
                     <span>Resta pagar en local:</span>
-                    <span>${(((selectedBooking.services as any)?.price || 0) - selectedBooking.deposit_amount).toFixed(2)}</span>
+                    <span>${((selectedBooking.services as any)?.price || 0).toFixed(2)}</span>
                   </div>
-                </>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Actions or Rescheduling */}
+            <div className="space-y-5 flex flex-col justify-between">
+              {/* Change Status Action Row */}
+              {!isRescheduling ? (
+                <div className="space-y-4">
+                  <h4 className="font-extrabold text-xs text-gray-400 border-b border-neutral-100 pb-1.5 uppercase">Acciones Rápidas</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => updateStatus(selectedBooking.id, 'COMPLETED')}
+                      className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
+                      disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
+                    >
+                      <CheckCircle className="h-4 w-4 text-success" /> Completado
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => updateStatus(selectedBooking.id, 'NO_SHOW')}
+                      className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
+                      disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
+                    >
+                      <XCircle className="h-4 w-4 text-warning" /> No Asistió
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => setIsRescheduling(true)}
+                      className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
+                      disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
+                    >
+                      <RefreshCw className="h-4 w-4 text-secondary" /> Reprogramar
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => updateStatus(selectedBooking.id, 'CANCELLED')}
+                      className="text-xs border-danger/25 text-danger hover:bg-danger/5 hover:border-danger flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer"
+                      disabled={selectedBooking.status === 'CANCELLED'}
+                    >
+                      <XCircle className="h-4 w-4 text-danger" /> Cancelar Turno
+                    </Button>
+                  </div>
+                </div>
               ) : (
-                <div className="flex justify-between text-success font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
-                  <span>Resta pagar en local:</span>
-                  <span>${((selectedBooking.services as any)?.price || 0).toFixed(2)}</span>
+                /* RESCHEDULING CONTAINER */
+                <div className="bg-secondary/5 border border-secondary/15 p-4 rounded-xl space-y-4 text-left flex-1 flex flex-col justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-secondary border-b border-secondary/10 pb-1.5 mb-3">Reprogramar Turno</h4>
+                    
+                    <div className="flex flex-col gap-1.5 mb-3">
+                      <label className="text-xs font-bold text-offblack">Nueva Fecha:</label>
+                      <input
+                        type="date"
+                        min={new Date().toISOString().split('T')[0]}
+                        value={rescheduleDate}
+                        onChange={(e) => setRescheduleDate(e.target.value)}
+                        className="font-bold text-sm border border-neutral-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-offblack">Nuevo Horario:</label>
+                      {!rescheduleDate ? (
+                        <span className="text-xs text-gray-400 font-semibold italic">Seleccione fecha primero.</span>
+                      ) : loadingReschedSlots ? (
+                        <span className="text-xs font-bold text-gray-400">Buscando horarios libres...</span>
+                      ) : rescheduleSlots.length === 0 ? (
+                        <span className="text-xs text-danger font-bold">No hay horarios libres para esta fecha.</span>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-1.5 max-h-[140px] overflow-y-auto pr-1">
+                          {rescheduleSlots.map((slot, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              disabled={!slot.available}
+                              onClick={() => setRescheduleTime(slot.time)}
+                              className={`py-1.5 text-center font-bold border rounded-lg text-xs cursor-pointer ${
+                                !slot.available
+                                  ? 'bg-neutral-50 text-gray-300 border-neutral-100 cursor-not-allowed'
+                                  : rescheduleTime === slot.time
+                                    ? 'bg-primary text-white border-transparent shadow-sm'
+                                    : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
+                              }`}
+                            >
+                              {slot.time}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-3 border-t border-secondary/10">
+                    <Button variant="ghost" onClick={() => setIsRescheduling(false)} className="py-1.5 px-3.5 text-xs rounded-lg cursor-pointer">
+                      Volver
+                    </Button>
+                    <Button 
+                      variant="primary" 
+                      disabled={!rescheduleDate || !rescheduleTime} 
+                      onClick={handleRescheduleSubmit}
+                      className="py-1.5 px-3.5 text-xs rounded-lg cursor-pointer"
+                    >
+                      Confirmar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Close Button for Details Modal (shows when not rescheduling) */}
+              {!isRescheduling && (
+                <div className="flex justify-end pt-4 border-t border-neutral-100">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => {
+                      setIsDetailsOpen(false);
+                      setSelectedBooking(null);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    Cerrar
+                  </Button>
                 </div>
               )}
             </div>
-
-            {/* Change Status Action Row */}
-            {!isRescheduling && (
-              <div className="space-y-3 pt-4 border-t border-neutral-100">
-                <h4 className="font-extrabold text-xs text-gray-400 uppercase">Acciones Rápidas</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => updateStatus(selectedBooking.id, 'COMPLETED')}
-                    className="text-xs flex justify-center gap-1.5 py-2.5 rounded-lg"
-                    disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
-                  >
-                    <CheckCircle className="h-4 w-4 text-success" /> Completado
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => updateStatus(selectedBooking.id, 'NO_SHOW')}
-                    className="text-xs flex justify-center gap-1.5 py-2.5 rounded-lg"
-                    disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
-                  >
-                    <XCircle className="h-4 w-4 text-warning" /> No Asistió
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => setIsRescheduling(true)}
-                    className="text-xs flex justify-center gap-1.5 py-2.5 rounded-lg"
-                    disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
-                  >
-                    <RefreshCw className="h-4 w-4 text-secondary" /> Reprogramar
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => updateStatus(selectedBooking.id, 'CANCELLED')}
-                    className="text-xs border-danger/20 text-danger hover:bg-danger/5 hover:border-danger flex justify-center gap-1.5 py-2.5 rounded-lg"
-                    disabled={selectedBooking.status === 'CANCELLED'}
-                  >
-                    <XCircle className="h-4 w-4 text-danger" /> Cancelar Turno
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* RESCHEDULING CONTAINER */}
-            {isRescheduling && (
-              <div className="bg-secondary/5 border border-secondary/15 p-4 rounded-xl space-y-4 text-left">
-                <h4 className="font-extrabold text-sm text-secondary m-0">Reprogramar Turno</h4>
-                
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-offblack">Nueva Fecha:</label>
-                  <input
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    value={rescheduleDate}
-                    onChange={(e) => setRescheduleDate(e.target.value)}
-                    className="font-bold text-sm border border-neutral-200 p-2 rounded-lg focus:outline-none focus:border-primary"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-offblack">Nuevo Horario:</label>
-                  {!rescheduleDate ? (
-                    <span className="text-xs text-gray-400 font-semibold italic">Seleccione fecha primero.</span>
-                  ) : loadingReschedSlots ? (
-                    <span className="text-xs font-bold text-gray-400">Buscando horarios libres...</span>
-                  ) : rescheduleSlots.length === 0 ? (
-                    <span className="text-xs text-danger font-bold">No hay horarios libres para esta fecha.</span>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {rescheduleSlots.map((slot, idx) => (
-                        <button
-                          key={idx}
-                          disabled={!slot.available}
-                          onClick={() => setRescheduleTime(slot.time)}
-                          className={`py-1.5 text-center font-bold border rounded-lg text-xs cursor-pointer ${
-                            !slot.available
-                              ? 'bg-neutral-50 text-gray-300 border-neutral-100 cursor-not-allowed'
-                              : rescheduleTime === slot.time
-                                ? 'bg-primary text-white border-transparent shadow-sm'
-                                : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
-                          }`}
-                        >
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2 justify-end pt-2">
-                  <Button variant="ghost" onClick={() => setIsRescheduling(false)} className="py-1.5 px-3 text-xs rounded-lg">
-                    Volver
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    disabled={!rescheduleDate || !rescheduleTime} 
-                    onClick={handleRescheduleSubmit}
-                    className="py-1.5 px-3 text-xs rounded-lg"
-                  >
-                    Confirmar
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </Modal>
@@ -854,130 +879,147 @@ export const AdminCalendar: React.FC = () => {
         isOpen={isManualBookingOpen}
         onClose={() => setIsManualBookingOpen(false)}
         title="Crear Turno Manualmente"
+        size="lg"
       >
-        <form onSubmit={handleManualBookingSubmit} className="space-y-4">
+        <form onSubmit={handleManualBookingSubmit} className="space-y-6 text-left">
           {manualError && (
             <div className="bg-danger/10 border border-danger/20 p-3 rounded-lg text-xs font-bold text-danger">
               {manualError}
             </div>
           )}
 
-          <div className="flex flex-col gap-1.5 w-full text-left">
-            <label className="text-sm font-bold text-offblack">Seleccionar Servicio</label>
-            <select
-              value={manualServiceId}
-              onChange={(e) => setManualServiceId(e.target.value)}
-              className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
-            >
-              {services.map(s => (
-                <option key={s.id} value={s.id}>{s.name} ({s.estimated_duration_minutes} min)</option>
-              ))}
-            </select>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column: Client details */}
+            <div className="space-y-4 border-r border-neutral-100 pr-0 md:pr-6">
+              <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
+                <User className="h-4 w-4" /> Datos del Cliente
+              </h4>
 
-          <div className="flex gap-2 items-end">
-            <Input
-              label="Correo Electrónico Cliente"
-              type="email"
-              value={manualEmail}
-              onChange={(e) => setManualEmail(e.target.value)}
-              placeholder="cliente@correo.com"
-              className="flex-1"
-              required
-            />
-            <Button type="button" variant="secondary" onClick={handleManualEmailSearch} className="mb-1 py-2.5 rounded-lg">
-              Buscar
-            </Button>
-          </div>
+              <div className="flex gap-2 items-end">
+                <Input
+                  label="Correo Electrónico Cliente"
+                  type="email"
+                  value={manualEmail}
+                  onChange={(e) => setManualEmail(e.target.value)}
+                  placeholder="cliente@correo.com"
+                  className="flex-1"
+                  required
+                />
+                <Button type="button" variant="secondary" onClick={handleManualEmailSearch} className="mb-1 py-2.5 rounded-lg cursor-pointer">
+                  Buscar
+                </Button>
+              </div>
 
-          {manualClientExists && (
-            <div className="bg-success/10 border border-success/20 p-2 rounded-lg text-xs font-bold text-success">
-              Cliente encontrado. Datos autocompletados.
-            </div>
-          )}
+              {manualClientExists && (
+                <div className="bg-success/10 border border-success/20 p-2 rounded-lg text-xs font-bold text-success">
+                  Cliente encontrado. Datos autocompletados.
+                </div>
+              )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Nombre"
-              type="text"
-              value={manualFirstName}
-              onChange={(e) => setManualFirstName(e.target.value)}
-              placeholder="Nombre"
-              required
-            />
-            <Input
-              label="Apellido"
-              type="text"
-              value={manualLastName}
-              onChange={(e) => setManualLastName(e.target.value)}
-              placeholder="Apellido"
-              required
-            />
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Nombre"
+                  type="text"
+                  value={manualFirstName}
+                  onChange={(e) => setManualFirstName(e.target.value)}
+                  placeholder="Nombre"
+                  required
+                />
+                <Input
+                  label="Apellido"
+                  type="text"
+                  value={manualLastName}
+                  onChange={(e) => setManualLastName(e.target.value)}
+                  placeholder="Apellido"
+                  required
+                />
+              </div>
 
-          <Input
-            label="Celular (WhatsApp)"
-            type="tel"
-            value={manualPhone}
-            onChange={(e) => setManualPhone(e.target.value)}
-            placeholder="2645012345"
-            required
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-neutral-100 pt-3">
-            <div className="flex flex-col gap-1.5 w-full text-left">
-              <label className="text-sm font-bold text-offblack">Seleccionar Fecha</label>
-              <input
-                type="date"
-                min={new Date().toISOString().split('T')[0]}
-                value={manualDate}
-                onChange={(e) => setManualDate(e.target.value)}
-                className="border border-neutral-200 p-2.5 rounded-lg text-sm bg-white font-semibold focus:outline-none focus:border-primary"
+              <Input
+                label="Celular (WhatsApp)"
+                type="tel"
+                value={manualPhone}
+                onChange={(e) => setManualPhone(e.target.value)}
+                placeholder="2645012345"
                 required
               />
             </div>
 
-            <div className="flex flex-col gap-1.5 w-full text-left">
-              <label className="text-sm font-bold text-offblack">Horario Libre</label>
-              {!manualDate ? (
-                <span className="text-xs text-gray-400 font-semibold italic mt-3">Seleccione fecha primero</span>
-              ) : loadingManualSlots ? (
-                <span className="text-xs font-bold text-gray-400 mt-3 animate-pulse">Cargando...</span>
-              ) : manualSlots.length === 0 ? (
-                <span className="text-xs text-danger font-bold mt-3">Sin slots libres en este día</span>
-              ) : (
+            {/* Right Column: Service & Booking details */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase text-secondary tracking-wider border-b border-neutral-100 pb-2 flex items-center gap-1.5">
+                <CalendarRange className="h-4 w-4" /> Detalles del Turno
+              </h4>
+
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-bold text-offblack">Seleccionar Servicio</label>
                 <select
-                  value={manualTime}
-                  onChange={(e) => setManualTime(e.target.value)}
+                  value={manualServiceId}
+                  onChange={(e) => setManualServiceId(e.target.value)}
                   className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
-                  required
                 >
-                  <option value="">Seleccione hora...</option>
-                  {manualSlots.map((s, idx) => (
-                    <option key={idx} value={s.time} disabled={!s.available}>
-                      {s.time} {!s.available ? '(Reservado)' : ''}
-                    </option>
+                  {services.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.estimated_duration_minutes} min)</option>
                   ))}
                 </select>
-              )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5 w-full">
+                  <label className="text-sm font-bold text-offblack">Seleccionar Fecha</label>
+                  <input
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    value={manualDate}
+                    onChange={(e) => setManualDate(e.target.value)}
+                    className="border border-neutral-200 p-2.5 rounded-lg text-sm bg-white font-semibold focus:outline-none focus:border-primary"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5 w-full">
+                  <label className="text-sm font-bold text-offblack">Horario Libre</label>
+                  {!manualDate ? (
+                    <span className="text-xs text-gray-400 font-semibold italic mt-2.5">Fecha primero</span>
+                  ) : loadingManualSlots ? (
+                    <span className="text-xs font-bold text-gray-400 mt-2.5 animate-pulse">Cargando...</span>
+                  ) : manualSlots.length === 0 ? (
+                    <span className="text-xs text-danger font-bold mt-2.5">Sin slots libres</span>
+                  ) : (
+                    <select
+                      value={manualTime}
+                      onChange={(e) => setManualTime(e.target.value)}
+                      className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
+                      required
+                    >
+                      <option value="">Hora...</option>
+                      {manualSlots.map((s, idx) => (
+                        <option key={idx} value={s.time} disabled={!s.available}>
+                          {s.time} {!s.available ? '(Reservado)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-sm font-bold text-offblack">Notas Internas (Opcional)</label>
+                <textarea
+                  value={manualNotes}
+                  onChange={(e) => setManualNotes(e.target.value)}
+                  placeholder="Ej. Llega en auto, requiere corte corto, etc."
+                  className="border border-neutral-200 p-2.5 rounded-lg w-full h-20 text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5 w-full text-left">
-            <label className="text-sm font-bold text-offblack">Notas Internas (Opcional)</label>
-            <textarea
-              value={manualNotes}
-              onChange={(e) => setManualNotes(e.target.value)}
-              placeholder="Ej. Llega en auto, requiere corte corto, etc."
-              className="border border-neutral-200 p-2.5 rounded-lg w-full h-20 text-sm focus:outline-none focus:border-primary"
-            />
-          </div>
-
           <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">
-            <Button type="button" variant="ghost" onClick={() => setIsManualBookingOpen(false)}>
+            <Button type="button" variant="ghost" onClick={() => setIsManualBookingOpen(false)} className="cursor-pointer">
               Cancelar
             </Button>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" className="cursor-pointer">
               Crear Turno
             </Button>
           </div>

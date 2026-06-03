@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Plus, Trash2, Calendar, Globe, Save, MessageCircle, Wifi, WifiOff, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Calendar, Globe, Save, ShieldCheck } from 'lucide-react';
 
-// URL del servidor WhatsApp backend (Express + Baileys)
-const WA_SERVER_URL = (import.meta.env.VITE_WA_SERVER_URL as string) || 'http://localhost:3001';
 
 interface HolidayBlock {
   id: string;
@@ -29,6 +27,13 @@ export const SettingsManager: React.FC = () => {
   const [facebook, setFacebook] = useState<string>('');
   const [instagram, setInstagram] = useState<string>('');
 
+  // Password fields
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [repeatPassword, setRepeatPassword] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
+  const [passwordSuccess, setPasswordSuccess] = useState<string>('');
+  const [savingPassword, setSavingPassword] = useState<boolean>(false);
+
   // Holidays list
   const [blocks, setBlocks] = useState<HolidayBlock[]>([]);
   
@@ -42,59 +47,7 @@ export const SettingsManager: React.FC = () => {
   const [savingSettings, setSavingSettings] = useState<boolean>(false);
   const [savingBlock, setSavingBlock] = useState<boolean>(false);
 
-  // WhatsApp connection state
-  type WAStatus = 'disconnected' | 'connecting' | 'waiting_qr' | 'connected' | 'unreachable';
-  const [waStatus, setWaStatus] = useState<WAStatus>('disconnected');
-  const [waQR, setWaQR] = useState<string | null>(null);
-  const [waDisconnecting, setWaDisconnecting] = useState<boolean>(false);
-  const [waReconnecting, setWaReconnecting] = useState<boolean>(false);
-  const waPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchWaStatus = async () => {
-    try {
-      const res = await fetch(`${WA_SERVER_URL}/api/wa/status`, { signal: AbortSignal.timeout(3000) });
-      const data = await res.json();
-      setWaStatus(data.status as WAStatus);
-      setWaQR(data.qr || null);
-    } catch {
-      setWaStatus('unreachable');
-      setWaQR(null);
-    }
-  };
-
-  // Poll every 3 seconds
-  useEffect(() => {
-    fetchWaStatus();
-    waPollingRef.current = setInterval(fetchWaStatus, 3000);
-    return () => {
-      if (waPollingRef.current) clearInterval(waPollingRef.current);
-    };
-  }, []);
-
-  const handleWaDisconnect = async () => {
-    if (!confirm('¿Seguro que deseas desconectar WhatsApp? Necesitarás escanear el QR nuevamente.')) return;
-    setWaDisconnecting(true);
-    try {
-      await fetch(`${WA_SERVER_URL}/api/wa/disconnect`, { method: 'POST' });
-      await fetchWaStatus();
-    } catch {
-      alert('Error al desconectar. Asegurate de que el servidor WA esté corriendo.');
-    } finally {
-      setWaDisconnecting(false);
-    }
-  };
-
-  const handleWaReconnect = async () => {
-    setWaReconnecting(true);
-    try {
-      await fetch(`${WA_SERVER_URL}/api/wa/reconnect`, { method: 'POST' });
-      await fetchWaStatus();
-    } catch {
-      alert('Error al reconectar. Asegurate de que el servidor WA esté corriendo.');
-    } finally {
-      setWaReconnecting(false);
-    }
-  };
 
   // Load data
   const loadData = async () => {
@@ -207,6 +160,39 @@ export const SettingsManager: React.FC = () => {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (newPassword !== repeatPassword) {
+      setPasswordError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        setPasswordError(error.message);
+      } else {
+        setPasswordSuccess('Contraseña actualizada con éxito.');
+        setNewPassword('');
+        setRepeatPassword('');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setPasswordError('Error al actualizar la contraseña.');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   return (
     <div className="space-y-6 text-left">
       {/* Header controls */}
@@ -291,111 +277,56 @@ export const SettingsManager: React.FC = () => {
                 </form>
               </CardContent>
             </Card>
-          </div>
 
-          {/* WhatsApp Connection Card */}
-          <Card className="border border-neutral-100 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5 text-success" /> Conexión WhatsApp
-                </span>
-                <WhatsAppStatusBadge status={waStatus} />
-              </CardTitle>
-              <p className="text-xs text-gray-400 font-semibold mt-1">
-                Vinculá el número de WhatsApp del negocio para enviar notificaciones automáticas a los clientes.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-5">
-
-              {/* Server unreachable */}
-              {waStatus === 'unreachable' && (
-                <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-xl text-sm text-gray-500 font-semibold space-y-3">
-                  <p className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-gray-400 shrink-0" />
-                    El servidor de WhatsApp no está corriendo. Inicialo desde la terminal:
-                  </p>
-                  <code className="block bg-offblack text-green-400 text-xs p-3 rounded-lg font-mono">
-                    npm run dev:server
-                  </code>
-                  <Button variant="secondary" onClick={fetchWaStatus} className="w-full text-xs py-2 rounded-lg flex items-center justify-center gap-2">
-                    <RefreshCw className="h-3.5 w-3.5" /> Reintentar conexión
-                  </Button>
-                </div>
-              )}
-
-              {/* Waiting for QR scan */}
-              {waStatus === 'waiting_qr' && (
-                <div className="text-center space-y-4">
-                  <p className="text-sm font-semibold text-gray-600">
-                    Escaneá el QR con WhatsApp en tu celular:
-                  </p>
-                  {waQR ? (
-                    <div className="flex justify-center">
-                      <div className="p-3 bg-white border-2 border-neutral-200 rounded-2xl shadow-sm inline-block">
-                        <img src={waQR} alt="QR WhatsApp" className="w-52 h-52 rounded-xl" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex justify-center items-center h-52 text-gray-400">
-                      <RefreshCw className="h-8 w-8 animate-spin" />
+            <Card className="border border-neutral-100 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-primary" /> Seguridad de la Cuenta
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  {passwordError && (
+                    <div className="bg-danger/10 border border-danger/20 p-3 rounded-lg text-xs font-bold text-danger">
+                      {passwordError}
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 font-semibold">
-                    Abrí WhatsApp → Dispositivos vinculados → Vincular un dispositivo
-                  </p>
-                </div>
-              )}
+                  {passwordSuccess && (
+                    <div className="bg-success/10 border border-success/20 p-3 rounded-lg text-xs font-bold text-success">
+                      {passwordSuccess}
+                    </div>
+                  )}
 
-              {/* Connected state */}
-              {waStatus === 'connected' && (
-                <div className="bg-success/5 border border-success/15 p-4 rounded-xl space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-                      <Wifi className="h-5 w-5 text-success" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-offblack">WhatsApp conectado y activo</p>
-                      <p className="text-xs text-gray-400 font-semibold">Las notificaciones automáticas están habilitadas</p>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Nueva Contraseña"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                    />
+                    <Input
+                      label="Repetir Nueva Contraseña"
+                      type="password"
+                      value={repeatPassword}
+                      onChange={(e) => setRepeatPassword(e.target.value)}
+                      placeholder="Repite tu contraseña"
+                      required
+                    />
                   </div>
-                  <Button
-                    variant="ghost"
-                    onClick={handleWaDisconnect}
-                    isLoading={waDisconnecting}
-                    className="w-full text-xs py-2 rounded-lg border border-danger/20 text-danger hover:bg-danger/5 flex items-center justify-center gap-2"
-                  >
-                    <WifiOff className="h-3.5 w-3.5" /> Desconectar sesión
-                  </Button>
-                </div>
-              )}
 
-              {/* Disconnected state */}
-              {(waStatus === 'disconnected') && (
-                <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-xl space-y-3 text-center">
-                  <WifiOff className="h-8 w-8 text-gray-300 mx-auto" />
-                  <p className="text-sm font-semibold text-gray-500">Sin sesión activa</p>
-                  <Button
-                    variant="primary"
-                    onClick={handleWaReconnect}
-                    isLoading={waReconnecting}
-                    className="w-full text-xs py-2.5 rounded-lg flex items-center justify-center gap-2"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" /> Iniciar nueva sesión
-                  </Button>
-                </div>
-              )}
+                  <div className="pt-4 flex justify-end">
+                    <Button type="submit" variant="primary" isLoading={savingPassword} className="flex items-center gap-2 py-2.5 px-4 rounded-xl">
+                      <Save className="h-4 w-4" /> Actualizar Contraseña
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
 
-              {/* Connecting state */}
-              {waStatus === 'connecting' && (
-                <div className="text-center py-6 space-y-3">
-                  <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
-                  <p className="text-sm font-semibold text-gray-500">Conectando a WhatsApp...</p>
-                </div>
-              )}
 
-            </CardContent>
-          </Card>
 
           {/* Blocks and Holidays management */}
           <div className="space-y-6">
@@ -513,19 +444,4 @@ export const SettingsManager: React.FC = () => {
   );
 };
 
-// ─── WhatsApp Status Badge ─────────────────────────────────────────────────────
-const WhatsAppStatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const config: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-    connected:    { label: 'Conectado',       cls: 'bg-success/10 text-success border border-success/20',    icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-    waiting_qr:  { label: 'Esperando QR',    cls: 'bg-amber-100 text-amber-700 border border-amber-200',    icon: <RefreshCw className="h-3.5 w-3.5 animate-spin" /> },
-    connecting:  { label: 'Conectando...',   cls: 'bg-blue-50 text-blue-600 border border-blue-200',        icon: <RefreshCw className="h-3.5 w-3.5 animate-spin" /> },
-    disconnected:{ label: 'Desconectado',    cls: 'bg-danger/10 text-danger border border-danger/20',        icon: <WifiOff className="h-3.5 w-3.5" /> },
-    unreachable: { label: 'Servidor offline',cls: 'bg-neutral-100 text-gray-500 border border-neutral-200', icon: <AlertCircle className="h-3.5 w-3.5" /> },
-  };
-  const { label, cls, icon } = config[status] ?? config.disconnected;
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${cls}`}>
-      {icon} {label}
-    </span>
-  );
-};
+
