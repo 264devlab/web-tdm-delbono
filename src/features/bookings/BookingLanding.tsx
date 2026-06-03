@@ -40,7 +40,11 @@ const MONTHS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-export const BookingLanding: React.FC = () => {
+interface BookingLandingProps {
+  settings?: any;
+}
+
+export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
   // Wizard steps: 'category' | 'service' | 'date_time' | 'client_info' | 'payment_sim' | 'success'
   const [step, setStep] = useState<'category' | 'service' | 'date_time' | 'client_info' | 'payment_sim' | 'success'>('category');
   
@@ -988,8 +992,8 @@ export const BookingLanding: React.FC = () => {
                   date: bookingDate,
                   time: selectedTime,
                   durationMinutes: selectedService.estimated_duration_minutes,
-                  businessName: 'Tienda de Mascotas Del Bono',
-                  address: 'Av. Del Bono 123, San Juan'
+                  businessName: settings?.business_name || 'Tienda de Mascotas Del Bono',
+                  address: settings?.address || 'Av. Del Bono 123, San Juan'
                 })}
                 target="_blank"
                 rel="noreferrer"
@@ -1006,8 +1010,8 @@ export const BookingLanding: React.FC = () => {
                   date: bookingDate,
                   time: selectedTime,
                   durationMinutes: selectedService.estimated_duration_minutes,
-                  businessName: 'Tienda de Mascotas Del Bono',
-                  address: 'Av. Del Bono 123, San Juan'
+                  businessName: settings?.business_name || 'Tienda de Mascotas Del Bono',
+                  address: settings?.address || 'Av. Del Bono 123, San Juan'
                 })}
                 className="w-full flex items-center justify-center gap-2 py-2.5 text-sm"
               >
@@ -1022,8 +1026,8 @@ export const BookingLanding: React.FC = () => {
                   date: bookingDate,
                   time: selectedTime,
                   durationMinutes: selectedService.estimated_duration_minutes,
-                  businessName: 'Tienda de Mascotas Del Bono',
-                  address: 'Av. Del Bono 123, San Juan'
+                  businessName: settings?.business_name || 'Tienda de Mascotas Del Bono',
+                  address: settings?.address || 'Av. Del Bono 123, San Juan'
                 })}
                 className="w-full flex items-center justify-center gap-2 py-2.5 text-xs text-gray-500 hover:text-offblack"
               >

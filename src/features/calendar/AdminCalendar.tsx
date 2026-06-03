@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { notifications } from '../../lib/notifications';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { Calendar as CalendarIcon, Clock, User, Phone, Mail, CheckCircle, XCircle, RefreshCw, CalendarRange, Plus } from 'lucide-react';
 
 const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -80,6 +81,38 @@ export const AdminCalendar: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
   const [isManualBookingOpen, setIsManualBookingOpen] = useState<boolean>(false);
+  
+  // Confirmation/Alert Modal states
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'danger' | 'warning' | 'primary';
+    showCancel?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    showCancel: true
+  });
+
+  const showConfirm = (config: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'danger' | 'warning' | 'primary';
+    showCancel?: boolean;
+  }) => {
+    setConfirmConfig({
+      isOpen: true,
+      showCancel: true,
+      ...config
+    });
+  };
   
   // Rescheduling details
   const [isRescheduling, setIsRescheduling] = useState<boolean>(false);
@@ -491,7 +524,14 @@ export const AdminCalendar: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      alert('Error al actualizar el estado.');
+      showConfirm({
+        title: 'Error de Actualización',
+        message: 'Ocurrió un error al actualizar el estado del turno.',
+        confirmText: 'Entendido',
+        variant: 'danger',
+        showCancel: false,
+        onConfirm: () => {}
+      });
     }
   };
 
@@ -536,7 +576,14 @@ export const AdminCalendar: React.FC = () => {
       setSelectedBooking(null);
     } catch (err) {
       console.error(err);
-      alert('Error al reprogramar el turno.');
+      showConfirm({
+        title: 'Error al Reprogramar',
+        message: 'Ocurrió un error al intentar reprogramar el turno. Por favor, intente de nuevo.',
+        confirmText: 'Entendido',
+        variant: 'danger',
+        showCancel: false,
+        onConfirm: () => {}
+      });
     }
   };
 
@@ -1025,6 +1072,18 @@ export const AdminCalendar: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* GLOBAL CONFIRMATION DIALOG */}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        showCancel={confirmConfig.showCancel}
+      />
     </div>
   );
 };

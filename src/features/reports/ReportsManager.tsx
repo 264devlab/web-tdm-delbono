@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { Download, BarChart2, DollarSign, Calendar, Users, Briefcase } from 'lucide-react';
 
 export const ReportsManager: React.FC = () => {
@@ -12,6 +13,38 @@ export const ReportsManager: React.FC = () => {
     servicesCount: 0,
     totalRevenue: 0
   });
+
+  // Confirmation/Alert Modal states
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'danger' | 'warning' | 'primary';
+    showCancel?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    showCancel: true
+  });
+
+  const showConfirm = (config: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'danger' | 'warning' | 'primary';
+    showCancel?: boolean;
+  }) => {
+    setConfirmConfig({
+      isOpen: true,
+      showCancel: true,
+      ...config
+    });
+  };
 
   useEffect(() => {
     async function loadStats() {
@@ -57,7 +90,17 @@ export const ReportsManager: React.FC = () => {
   // 1. Export Clients
   const exportClients = async () => {
     const { data: clients, error } = await supabase.from('clients').select('*');
-    if (error || !clients) return alert('Error al exportar clientes');
+    if (error || !clients) {
+      showConfirm({
+        title: 'Error de Exportación',
+        message: 'Ocurrió un error al intentar exportar los clientes.',
+        confirmText: 'Entendido',
+        variant: 'danger',
+        showCancel: false,
+        onConfirm: () => {}
+      });
+      return;
+    }
 
     const headers = ['ID', 'Email', 'Nombre', 'Apellido', 'Teléfono', 'Fecha Registro'];
     const rows = clients.map((c: any) => [
@@ -76,7 +119,17 @@ export const ReportsManager: React.FC = () => {
   // 2. Export Bookings (Turnos)
   const exportBookings = async () => {
     const { data: bookings, error } = await supabase.from('bookings').select('*, clients(*), services(*)');
-    if (error || !bookings) return alert('Error al exportar turnos');
+    if (error || !bookings) {
+      showConfirm({
+        title: 'Error de Exportación',
+        message: 'Ocurrió un error al intentar exportar la planilla de turnos.',
+        confirmText: 'Entendido',
+        variant: 'danger',
+        showCancel: false,
+        onConfirm: () => {}
+      });
+      return;
+    }
 
     const headers = ['ID Reserva', 'Cliente Email', 'Cliente Nombre', 'Servicio', 'Fecha Turno', 'Hora Turno', 'Duración (Min)', 'Seña Pagada ($)', 'Estado', 'ID Pago MP', 'Fecha Creación'];
     const rows = bookings.map((b: any) => [
@@ -100,7 +153,17 @@ export const ReportsManager: React.FC = () => {
   // 3. Export Services
   const exportServices = async () => {
     const { data: services, error } = await supabase.from('services').select('*, categories(*)');
-    if (error || !services) return alert('Error al exportar servicios');
+    if (error || !services) {
+      showConfirm({
+        title: 'Error de Exportación',
+        message: 'Ocurrió un error al intentar exportar el catálogo de servicios.',
+        confirmText: 'Entendido',
+        variant: 'danger',
+        showCancel: false,
+        onConfirm: () => {}
+      });
+      return;
+    }
 
     const headers = ['ID', 'Categoría', 'Servicio', 'Descripción', 'Duración (Min)', 'Activo', 'Seña Requiere', 'Monto Seña', 'Max Turnos Simultáneos'];
     const rows = services.map((s: any) => [
@@ -122,7 +185,17 @@ export const ReportsManager: React.FC = () => {
   // 4. Export Revenues
   const exportRevenues = async () => {
     const { data: bookings, error } = await supabase.from('bookings').select('*, clients(*), services(*)');
-    if (error || !bookings) return alert('Error al exportar ingresos');
+    if (error || !bookings) {
+      showConfirm({
+        title: 'Error de Exportación',
+        message: 'Ocurrió un error al intentar exportar el reporte de ingresos.',
+        confirmText: 'Entendido',
+        variant: 'danger',
+        showCancel: false,
+        onConfirm: () => {}
+      });
+      return;
+    }
 
     // Filter only confirmed/completed revenues
     const paidBookings = bookings.filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED');
@@ -252,6 +325,18 @@ export const ReportsManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* GLOBAL CONFIRMATION DIALOG */}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        showCancel={confirmConfig.showCancel}
+      />
     </div>
   );
 };

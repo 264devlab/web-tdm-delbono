@@ -3,6 +3,7 @@ import { supabase } from '../../utils/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { Plus, Trash2, Calendar, Globe, Save, ShieldCheck } from 'lucide-react';
 
 
@@ -17,6 +18,38 @@ interface HolidayBlock {
 export const SettingsManager: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [settingsId, setSettingsId] = useState<string>('');
+
+  // Confirmation/Alert Modal states
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'danger' | 'warning' | 'primary';
+    showCancel?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    showCancel: true
+  });
+
+  const showConfirm = (config: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'danger' | 'warning' | 'primary';
+    showCancel?: boolean;
+  }) => {
+    setConfirmConfig({
+      isOpen: true,
+      showCancel: true,
+      ...config
+    });
+  };
   
   // Business fields
   const [businessName, setBusinessName] = useState<string>('');
@@ -90,7 +123,7 @@ export const SettingsManager: React.FC = () => {
       business_name: businessName,
       address,
       phone,
-      email,
+      email: email || '',
       whatsapp,
       facebook: facebook || null,
       instagram: instagram || null,
@@ -105,11 +138,25 @@ export const SettingsManager: React.FC = () => {
         const { error } = await supabase.from('business_settings').insert(payload);
         if (error) throw error;
       }
-      alert('Configuración guardada exitosamente.');
+      showConfirm({
+        title: 'Configuración Guardada',
+        message: 'La configuración de la tienda ha sido guardada exitosamente.',
+        confirmText: 'Aceptar',
+        variant: 'primary',
+        showCancel: false,
+        onConfirm: () => {}
+      });
       await loadData();
     } catch (err) {
       console.error(err);
-      alert('Error al guardar configuración.');
+      showConfirm({
+        title: 'Error de Configuración',
+        message: 'Ocurrió un error al intentar guardar la configuración.',
+        confirmText: 'Entendido',
+        variant: 'danger',
+        showCancel: false,
+        onConfirm: () => {}
+      });
     } finally {
       setSavingSettings(false);
     }
@@ -143,21 +190,35 @@ export const SettingsManager: React.FC = () => {
       await loadData();
     } catch (err) {
       console.error(err);
-      alert('Error al guardar el bloqueo.');
+      showConfirm({
+        title: 'Error de Bloqueo',
+        message: 'Ocurrió un error al intentar guardar el bloqueo de fecha.',
+        confirmText: 'Entendido',
+        variant: 'danger',
+        showCancel: false,
+        onConfirm: () => {}
+      });
     } finally {
       setSavingBlock(false);
     }
   };
 
   // Delete Block
-  const handleDeleteBlock = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar esta regla de bloqueo?')) return;
-    try {
-      await supabase.from('holidays_blocks').delete().eq('id', id);
-      await loadData();
-    } catch (err) {
-      console.error(err);
-    }
+  const handleDeleteBlock = (id: string) => {
+    showConfirm({
+      title: 'Eliminar Bloqueo',
+      message: '¿Seguro que deseas eliminar esta regla de bloqueo?',
+      confirmText: 'Eliminar',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await supabase.from('holidays_blocks').delete().eq('id', id);
+          await loadData();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -247,11 +308,10 @@ export const SettingsManager: React.FC = () => {
                   </div>
 
                   <Input
-                    label="Email Administrativo"
+                    label="Email Administrativo (Opcional)"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                   />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-neutral-100 pt-4">
@@ -440,6 +500,18 @@ export const SettingsManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* GLOBAL CONFIRMATION DIALOG */}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        showCancel={confirmConfig.showCancel}
+      />
     </div>
   );
 };

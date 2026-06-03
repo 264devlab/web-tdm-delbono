@@ -438,7 +438,8 @@ const AppContent: React.FC<{
   isResettingPassword: boolean;
   setIsResettingPassword: (val: boolean) => void;
   checkingAuth: boolean;
-}> = ({ session, onLogout, isResettingPassword, setIsResettingPassword, checkingAuth }) => {
+  settings: any;
+}> = ({ session, onLogout, isResettingPassword, setIsResettingPassword, checkingAuth, settings }) => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
 
@@ -454,7 +455,9 @@ const AppContent: React.FC<{
             <div className="flex items-center gap-2.5 text-offblack no-underline">
               <img src="/logo.png" alt="Del Bono Logo" className="h-10 w-10 object-contain" />
               <div className="text-left">
-                <span className="font-extrabold text-base sm:text-lg tracking-tight block">Tienda de Mascotas Del Bono</span>
+                <span className="font-extrabold text-base sm:text-lg tracking-tight block">
+                  {settings?.business_name || 'Tienda de Mascotas Del Bono'}
+                </span>
               </div>
             </div>
           </div>
@@ -492,7 +495,9 @@ const AppContent: React.FC<{
           >
             <img src="/logo.png" alt="Del Bono Logo" className="h-10 w-10 object-contain" />
             <div className="text-left">
-              <span className="font-extrabold text-base sm:text-lg tracking-tight block">Tienda de Mascotas Del Bono</span>
+              <span className="font-extrabold text-base sm:text-lg tracking-tight block">
+                {settings?.business_name || 'Tienda de Mascotas Del Bono'}
+              </span>
             </div>
           </Link>
 
@@ -511,7 +516,7 @@ const AppContent: React.FC<{
       {/* Main Body */}
       <main className="flex-1 w-full max-w-6xl mx-auto py-8 px-6">
         <Routes>
-          <Route path="/" element={<BookingLanding />} />
+          <Route path="/" element={<BookingLanding settings={settings} />} />
           <Route path="/turno/:id" element={<BookingStatus />} />
           <Route
             path="/login"
@@ -524,11 +529,37 @@ const AppContent: React.FC<{
       {/* Footer */}
       <footer className="border-t border-neutral-100 bg-white py-8 px-6 text-center text-xs font-semibold text-gray-400">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="m-0">© 2026 Tienda de Mascotas Del Bono. Todos los derechos reservados.</p>
+          <p className="m-0">© 2026 {settings?.business_name || 'Tienda de Mascotas Del Bono'}. Todos los derechos reservados.</p>
           <div className="flex gap-4 flex-wrap justify-center items-center">
-            <span>Av. Del Bono 123, San Juan</span>
+            <span>{settings?.address || 'Av. Del Bono 123, San Juan'}</span>
             <span>•</span>
-            <span>+54 264 4567890</span>
+            <span>{settings?.phone || '+54 264 4567890'}</span>
+            {settings?.instagram && (
+              <>
+                <span>•</span>
+                <a 
+                  href={`https://instagram.com/${settings.instagram}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-primary transition-colors no-underline text-gray-400"
+                >
+                  @{settings.instagram}
+                </a>
+              </>
+            )}
+            {settings?.facebook && (
+              <>
+                <span>•</span>
+                <a 
+                  href={`https://facebook.com/${settings.facebook}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-primary transition-colors no-underline text-gray-400"
+                >
+                  Facebook
+                </a>
+              </>
+            )}
           </div>
         </div>
       </footer>
@@ -543,12 +574,20 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
   const [isResettingPassword, setIsResettingPassword] = useState<boolean>(false);
+  const [settings, setSettings] = useState<any>(null);
 
   useEffect(() => {
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }: any) => {
       setSession(session);
       setCheckingAuth(false);
+    });
+
+    // Load business settings
+    supabase.from('business_settings').select('*').then(({ data }: any) => {
+      if (data && data.length > 0) {
+        setSettings(data[0]);
+      }
     });
 
     // Listen for auth changes
@@ -575,6 +614,7 @@ export default function App() {
         isResettingPassword={isResettingPassword}
         setIsResettingPassword={setIsResettingPassword}
         checkingAuth={checkingAuth}
+        settings={settings}
       />
     </BrowserRouter>
   );
