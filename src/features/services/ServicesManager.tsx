@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Clock, Info, Calendar, Shield, Sliders } from 'lucide-react';
 
 interface Category {
@@ -102,6 +103,38 @@ export const ServicesManager: React.FC = () => {
   const [newStartTime, setNewStartTime] = useState<string>('09:00');
   const [newEndTime, setNewEndTime] = useState<string>('13:00');
 
+  // Confirmation dialog states
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'danger' | 'warning' | 'primary';
+    showCancel?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    showCancel: true
+  });
+
+  const showConfirm = (config: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: 'danger' | 'warning' | 'primary';
+    showCancel?: boolean;
+  }) => {
+    setConfirmConfig({
+      isOpen: true,
+      showCancel: true,
+      ...config
+    });
+  };
+
   const startEditHours = async (service: Service) => {
     setSelectedHoursService(service);
     setIsHoursModalOpen(true);
@@ -167,11 +200,23 @@ export const ServicesManager: React.FC = () => {
     if (!selectedHoursService) return;
     const currentDayShifts = hoursList.filter(h => h.day_of_week === selectedDayTab);
     if (currentDayShifts.length === 0) {
-      if (!confirm('No hay horarios definidos para este día. Esto eliminará los horarios de los demás días hábiles. ¿Continuar?')) {
-        return;
-      }
+      showConfirm({
+        title: 'Copiar Horarios',
+        message: 'No hay horarios definidos para este día. Esto eliminará los horarios de los demás días hábiles. ¿Continuar?',
+        confirmText: 'Continuar',
+        variant: 'warning',
+        onConfirm: () => {
+          performCopyShiftsToWeekdays();
+        }
+      });
+      return;
     }
+    performCopyShiftsToWeekdays();
+  };
 
+  const performCopyShiftsToWeekdays = () => {
+    if (!selectedHoursService) return;
+    const currentDayShifts = hoursList.filter(h => h.day_of_week === selectedDayTab);
     const weekdays = [1, 2, 3, 4, 5];
     let newList = hoursList.filter(h => !weekdays.includes(h.day_of_week));
 
@@ -193,11 +238,23 @@ export const ServicesManager: React.FC = () => {
     if (!selectedHoursService) return;
     const currentDayShifts = hoursList.filter(h => h.day_of_week === selectedDayTab);
     if (currentDayShifts.length === 0) {
-      if (!confirm('No hay horarios definidos para este día. Esto eliminará los horarios de todos los demás días. ¿Continuar?')) {
-        return;
-      }
+      showConfirm({
+        title: 'Copiar Horarios',
+        message: 'No hay horarios definidos para este día. Esto eliminará los horarios de todos los demás días. ¿Continuar?',
+        confirmText: 'Continuar',
+        variant: 'warning',
+        onConfirm: () => {
+          performCopyShiftsToAllDays();
+        }
+      });
+      return;
     }
+    performCopyShiftsToAllDays();
+  };
 
+  const performCopyShiftsToAllDays = () => {
+    if (!selectedHoursService) return;
+    const currentDayShifts = hoursList.filter(h => h.day_of_week === selectedDayTab);
     const allDays = [0, 1, 2, 3, 4, 5, 6];
     let newList: ServiceHour[] = [];
 
@@ -403,24 +460,58 @@ export const ServicesManager: React.FC = () => {
   };
 
   // Delete handlers
-  const deleteService = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar este servicio? Se borrarán sus turnos históricos.')) return;
-    try {
-      await supabase.from('services').delete().eq('id', id);
-      await loadData();
-    } catch (err) {
-      console.error(err);
-    }
+  const deleteService = (id: string) => {
+    showConfirm({
+      title: 'Eliminar Servicio',
+      message: '¿Seguro que deseas eliminar este servicio? Se borrarán sus turnos históricos si no tiene reservas activas.',
+      confirmText: 'Eliminar',
+      variant: 'danger',
+      onConfirm: async () => {
+        const { error } = await supabase.from('services').delete().eq('id', id);
+        if (error) {
+          console.error(error);
+          setTimeout(() => {
+            showConfirm({
+              title: 'No se puede eliminar',
+              message: 'No se puede eliminar el servicio porque tiene turnos asociados. Puedes desactivarlo en su lugar para ocultarlo de los clientes.',
+              confirmText: 'Entendido',
+              variant: 'warning',
+              showCancel: false,
+              onConfirm: () => {}
+            });
+          }, 100);
+        } else {
+          await loadData();
+        }
+      }
+    });
   };
 
-  const deleteCategory = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar esta categoría? Se borrarán todos los servicios agrupados en ella.')) return;
-    try {
-      await supabase.from('categories').delete().eq('id', id);
-      await loadData();
-    } catch (err) {
-      console.error(err);
-    }
+  const deleteCategory = (id: string) => {
+    showConfirm({
+      title: 'Eliminar Categoría',
+      message: '¿Seguro que deseas eliminar esta categoría? Se borrarán todos los servicios agrupados en ella si no tienen reservas activas.',
+      confirmText: 'Eliminar',
+      variant: 'danger',
+      onConfirm: async () => {
+        const { error } = await supabase.from('categories').delete().eq('id', id);
+        if (error) {
+          console.error(error);
+          setTimeout(() => {
+            showConfirm({
+              title: 'No se puede eliminar',
+              message: 'No se puede eliminar la categoría porque contiene servicios que tienen turnos asociados. Puedes desactivar la categoría en su lugar para ocultarla de los clientes.',
+              confirmText: 'Entendido',
+              variant: 'warning',
+              showCancel: false,
+              onConfirm: () => {}
+            });
+          }, 100);
+        } else {
+          await loadData();
+        }
+      }
+    });
   };
 
   return (
@@ -1015,6 +1106,18 @@ export const ServicesManager: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* GLOBAL CONFIRMATION DIALOG */}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        showCancel={confirmConfig.showCancel}
+      />
     </div>
   );
 };

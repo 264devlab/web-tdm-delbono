@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { MessageCircle, Wifi, WifiOff, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 // URL del servidor WhatsApp backend (Express + Baileys)
@@ -13,6 +14,7 @@ export const WhatsAppConnectionManager: React.FC = () => {
   const [waQR, setWaQR] = useState<string | null>(null);
   const [waDisconnecting, setWaDisconnecting] = useState<boolean>(false);
   const [waReconnecting, setWaReconnecting] = useState<boolean>(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
   const waPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchWaStatus = async () => {
@@ -36,8 +38,11 @@ export const WhatsAppConnectionManager: React.FC = () => {
     };
   }, []);
 
-  const handleWaDisconnect = async () => {
-    if (!confirm('¿Seguro que deseas desconectar WhatsApp? Necesitarás escanear el QR nuevamente.')) return;
+  const handleWaDisconnect = () => {
+    setIsConfirmOpen(true);
+  };
+
+  const performWaDisconnect = async () => {
     setWaDisconnecting(true);
     try {
       await fetch(`${WA_SERVER_URL}/api/wa/disconnect`, { method: 'POST' });
@@ -175,6 +180,16 @@ export const WhatsAppConnectionManager: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={performWaDisconnect}
+        title="Desconectar WhatsApp"
+        message="¿Seguro que deseas desconectar WhatsApp? Se detendrán las notificaciones automáticas y necesitarás escanear el código QR nuevamente para reactivar el servicio."
+        confirmText="Desconectar"
+        variant="danger"
+      />
     </div>
   );
 };
