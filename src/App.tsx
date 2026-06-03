@@ -156,13 +156,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout }) => {
         {/* Content Body */}
         <main className="p-6 flex-1 bg-neutral-50/30 overflow-y-auto">
           <Routes>
-            <Route path="/" element={<AdminDashboard />} />
-            <Route path="calendar" element={<AdminCalendar />} />
-            <Route path="services" element={<ServicesManager />} />
-            <Route path="clients" element={<ClientsManager />} />
-            <Route path="reports" element={<ReportsManager />} />
-            <Route path="whatsapp" element={<WhatsAppConnectionManager />} />
-            <Route path="settings" element={<SettingsManager />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/calendar" element={<AdminCalendar />} />
+            <Route path="/admin/services" element={<ServicesManager />} />
+            <Route path="/admin/clients" element={<ClientsManager />} />
+            <Route path="/admin/reports" element={<ReportsManager />} />
+            <Route path="/admin/whatsapp" element={<WhatsAppConnectionManager />} />
+            <Route path="/admin/settings" element={<SettingsManager />} />
           </Routes>
         </main>
       </div>
