@@ -517,7 +517,7 @@ const AppContent: React.FC<{
       <main className="flex-1 w-full max-w-6xl mx-auto py-8 px-6">
         <Routes>
           <Route path="/" element={<BookingLanding settings={settings} />} />
-          <Route path="/turno/:id" element={<BookingStatus />} />
+          <Route path="/turno/:id" element={<BookingStatus settings={settings} />} />
           <Route
             path="/login"
             element={session ? <Navigate to="/admin" replace /> : <AdminLogin />}

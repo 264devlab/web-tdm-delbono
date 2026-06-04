@@ -5,6 +5,11 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 require('dotenv').config();
 
+const { MercadoPagoConfig, Preference } = require('mercadopago');
+const mpClient = new MercadoPagoConfig({
+  accessToken: process.env.MP_ACCESS_TOKEN || 'APP_USR-7836050886019304-060409-f12818c2b9fb599e93e76217b0a2ecca-3450532720'
+});
+
 const express = require('express');
 const cors = require('cors');
 const qrcode = require('qrcode');
@@ -312,6 +317,57 @@ app.post('/api/email/send', async (req, res) => {
     }
   } catch (err) {
     console.error('[Email] Error en peticion:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/** POST /api/payment/create_preference — { title, price, quantity, bookingId } */
+app.post('/api/payment/create_preference', async (req, res) => {
+  const incomingKey = req.headers['x-api-key'] || req.headers['authorization'];
+  if (WA_API_KEY && incomingKey !== WA_API_KEY) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: API Key no autorizada.' });
+  }
+
+  const { title, price, quantity, bookingId } = req.body || {};
+
+  if (!title || !price || !quantity || !bookingId) {
+    return res.status(400).json({ success: false, error: 'Faltan parámetros obligatorios: title, price, quantity, bookingId.' });
+  }
+
+  try {
+    const preference = new Preference(mpClient);
+    const origin = req.headers.origin || 'http://localhost:5173';
+
+    const preferenceBody = {
+      items: [
+        {
+          id: bookingId,
+          title: title,
+          quantity: Number(quantity),
+          unit_price: Number(price),
+          currency_id: 'ARS'
+        }
+      ],
+      back_urls: {
+        success: `${origin}/turno/${bookingId}?payment_status=success`,
+        failure: `${origin}/turno/${bookingId}?payment_status=failure`,
+        pending: `${origin}/turno/${bookingId}?payment_status=pending`
+      },
+      external_reference: bookingId
+    };
+
+    if (origin.startsWith('https://')) {
+      preferenceBody.auto_return = 'approved';
+    }
+
+    const result = await preference.create({
+      body: preferenceBody
+    });
+
+    console.log(`[Mercado Pago] Preference created for booking ${bookingId}. ID: ${result.id}`);
+    res.json({ success: true, id: result.id, init_point: result.init_point });
+  } catch (err) {
+    console.error('[Mercado Pago] Error al crear preferencia:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
