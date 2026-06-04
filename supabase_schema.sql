@@ -101,7 +101,9 @@ create table if not exists public.bookings (
     status text not null default 'PENDING_PAYMENT' check (status in ('PENDING_PAYMENT', 'CONFIRMED', 'CANCELLED', 'RESCHEDULED', 'COMPLETED', 'NO_SHOW')),
     notes text,
     created_at timestamp with time zone default now(),
-    updated_at timestamp with time zone default now()
+    updated_at timestamp with time zone default now(),
+    quantity integer not null default 1,
+    reminder_sent boolean not null default false
 );
 
 -- -------------------------------------------------------------
