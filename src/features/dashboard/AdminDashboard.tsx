@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
 import { Card, CardContent } from '../../components/ui/Card';
+import { formatCurrency, formatDate } from '../../utils/format';
 import { Calendar, Users, DollarSign, TrendingUp, Clock, ShieldCheck } from 'lucide-react';
 
 export const translateStatus = (status: string) => {
@@ -198,7 +199,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ingresos Señas</span>
-              <h3 className="text-2xl font-extrabold text-success mt-1">${stats.totalRevenue.toFixed(0)}</h3>
+              <h3 className="text-2xl font-extrabold text-success mt-1">${formatCurrency(stats.totalRevenue)}</h3>
               <span className="text-xs font-semibold text-success/80">Pagos confirmados</span>
             </div>
           </CardContent>
@@ -227,7 +228,7 @@ export const AdminDashboard: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="bg-neutral-50 border border-neutral-100 text-[10px] font-bold px-2 py-0.5 rounded-full text-gray-500">
-                        {b.booking_date} | {b.booking_time.substring(0, 5)} hs
+                        {formatDate(b.booking_date)} | {b.booking_time.substring(0, 5)} hs
                       </span>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(b.status)}`}>
                         {translateStatus(b.status)}
@@ -241,7 +242,7 @@ export const AdminDashboard: React.FC = () => {
                   {b.deposit_amount > 0 && (
                     <div className="text-right">
                       <span className="text-[10px] font-bold text-gray-400 block uppercase">Seña MP</span>
-                      <span className="text-sm font-extrabold text-success">${b.deposit_amount.toFixed(0)}</span>
+                      <span className="text-sm font-extrabold text-success">${formatCurrency(b.deposit_amount)}</span>
                     </div>
                   )}
                 </div>

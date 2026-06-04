@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { Plus, Trash2, Calendar, Globe, Save, ShieldCheck } from 'lucide-react';
+import { formatDate } from '../../utils/format';
 
 
 interface HolidayBlock {
@@ -59,6 +60,7 @@ export const SettingsManager: React.FC = () => {
   const [whatsapp, setWhatsapp] = useState<string>('');
   const [facebook, setFacebook] = useState<string>('');
   const [instagram, setInstagram] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState<string>('');
 
   // Password fields
   const [newPassword, setNewPassword] = useState<string>('');
@@ -97,6 +99,7 @@ export const SettingsManager: React.FC = () => {
         setWhatsapp(s.whatsapp);
         setFacebook(s.facebook || '');
         setInstagram(s.instagram || '');
+        setLogoUrl(s.logo_url || '');
       }
 
       const { data: blocksData } = await supabase.from('holidays_blocks').select('*');
@@ -127,6 +130,7 @@ export const SettingsManager: React.FC = () => {
       whatsapp,
       facebook: facebook || null,
       instagram: instagram || null,
+      logo_url: logoUrl || null,
       updated_at: new Date().toISOString()
     };
 
@@ -166,6 +170,35 @@ export const SettingsManager: React.FC = () => {
   const handleAddBlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!blockDate || !blockReason) return;
+
+    // Validate date to be in the current year or future, preventing past years (like 2001) or far future years (like 20026)
+    const selectedDate = new Date(blockDate + 'T00:00:00');
+    const selectedYear = selectedDate.getFullYear();
+    const currentYear = new Date().getFullYear();
+
+    if (selectedYear < currentYear) {
+      showConfirm({
+        title: 'Fecha inválida',
+        message: 'No puedes bloquear una fecha en el pasado. Por favor selecciona una fecha actual o futura.',
+        confirmText: 'Entendido',
+        variant: 'warning',
+        showCancel: false,
+        onConfirm: () => {}
+      });
+      return;
+    }
+
+    if (selectedYear > currentYear + 5) {
+      showConfirm({
+        title: 'Fecha inválida',
+        message: 'No puedes bloquear una fecha con más de 5 años en el futuro. Por favor verifica el año seleccionado.',
+        confirmText: 'Entendido',
+        variant: 'warning',
+        showCancel: false,
+        onConfirm: () => {}
+      });
+      return;
+    }
     
     setSavingBlock(true);
 
@@ -312,6 +345,14 @@ export const SettingsManager: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                  />
+
+                  <Input
+                    label="URL del Logotipo (Imagen Pública para Correos)"
+                    type="url"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="https://ejemplo.com/logo.png"
                   />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-neutral-100 pt-4">
@@ -465,37 +506,46 @@ export const SettingsManager: React.FC = () => {
             <div className="space-y-3 text-left">
               <h4 className="font-extrabold text-sm text-gray-400 uppercase border-b border-neutral-100 pb-2">Reglas de Cierre Activas</h4>
               
-              {blocks.length === 0 ? (
-                <p className="text-xs text-gray-400 font-semibold italic">No hay días de cierre configurados.</p>
-              ) : (
-                <div className="max-h-[30dvh] overflow-y-auto space-y-2.5 pr-1">
-                  {blocks.map(b => (
-                    <div key={b.id} className="border border-neutral-100 p-3 bg-white rounded-xl shadow-sm flex items-center justify-between gap-3">
-                      <div>
-                        <span className="bg-secondary/10 text-secondary border-none px-2 py-0.5 text-[9px] font-bold rounded-full">
-                          {b.date}
-                        </span>
-                        <h5 className="font-bold text-xs text-offblack mt-1.5 m-0">{b.reason}</h5>
-                        {!b.start_time ? (
-                          <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Cierre Completo</span>
-                        ) : (
-                          <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">
-                            Franja: {b.start_time.substring(0, 5)} - {b.end_time?.substring(0, 5)} hs
+              {(() => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const activeBlocks = blocks
+                  .filter(b => b.date >= todayStr)
+                  .sort((a, b) => a.date.localeCompare(b.date));
+
+                if (activeBlocks.length === 0) {
+                  return <p className="text-xs text-gray-400 font-semibold italic">No hay días de cierre configurados.</p>;
+                }
+
+                return (
+                  <div className="max-h-[30dvh] overflow-y-auto space-y-2.5 pr-1">
+                    {activeBlocks.map(b => (
+                      <div key={b.id} className="border border-neutral-100 p-3 bg-white rounded-xl shadow-sm flex items-center justify-between gap-3">
+                        <div>
+                          <span className="bg-secondary/10 text-secondary border-none px-2 py-0.5 text-[9px] font-bold rounded-full">
+                            {formatDate(b.date)}
                           </span>
-                        )}
+                          <h5 className="font-bold text-xs text-offblack mt-1.5 m-0">{b.reason}</h5>
+                          {!b.start_time ? (
+                            <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">Cierre Completo</span>
+                          ) : (
+                            <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">
+                              Franja: {b.start_time.substring(0, 5)} - {b.end_time?.substring(0, 5)} hs
+                            </span>
+                          )}
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => handleDeleteBlock(b.id)}
+                          className="p-1.5 min-w-0 border-none hover:bg-neutral-50 rounded-lg"
+                          title="Eliminar bloqueo"
+                        >
+                          <Trash2 className="h-4 w-4 text-danger" />
+                        </Button>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => handleDeleteBlock(b.id)}
-                        className="p-1.5 min-w-0 border-none hover:bg-neutral-50 rounded-lg"
-                        title="Eliminar bloqueo"
-                      >
-                        <Trash2 className="h-4 w-4 text-danger" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

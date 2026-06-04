@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
+import { formatDate } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { User, Phone, Mail, Calendar, Search } from 'lucide-react';
 
@@ -177,7 +178,7 @@ export const ClientsManager: React.FC = () => {
                       {selectedClientBookings.map(b => (
                         <div key={b.id} className="border border-neutral-200 p-3 bg-neutral-50 rounded-lg space-y-1.5 text-left">
                           <div className="flex justify-between items-center text-[10px] font-semibold text-gray-500">
-                            <span>{b.booking_date} | {b.booking_time.substring(0, 5)} hs</span>
+                            <span>{formatDate(b.booking_date)} | {b.booking_time.substring(0, 5)} hs</span>
                             <span className={`px-2 py-0.5 rounded-full font-bold ${getStatusBadgeClass(b.status)}`}>
                               {translateStatus(b.status)}
                             </span>

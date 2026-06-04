@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
-import { getAvailableSlots, type BookingSlot } from '../../utils/availability';
+import { getAvailableSlots, getAvailableDaysForRange, type BookingSlot } from '../../utils/availability';
+import { formatCurrency, formatDate } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -48,12 +49,12 @@ interface BookingLandingProps {
 export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
   // Wizard steps: 'category' | 'service' | 'date_time' | 'client_info' | 'payment_sim' | 'success'
   const [step, setStep] = useState<'category' | 'service' | 'date_time' | 'client_info' | 'payment_sim' | 'success'>('category');
-  
+
   // Data lists
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  
+
   // Selected booking choices
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [bookingDate, setBookingDate] = useState<string>('');
@@ -73,7 +74,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
   const [calendarYear, setCalendarYear] = useState<number>(today.getFullYear());
   const [availableDays, setAvailableDays] = useState<Set<string>>(new Set());
   const [checkingAvailability, setCheckingAvailability] = useState<boolean>(false);
-  
+
   // Client details
   const [email, setEmail] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
@@ -84,6 +85,11 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
   const [clientId, setClientId] = useState<string>('');
   const [clientFormError, setClientFormError] = useState<string>('');
 
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
+
   // Payment status
   const [paymentId, setPaymentId] = useState<string>('');
 
@@ -92,7 +98,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
     async function loadData() {
       const { data: catData } = await supabase.from('categories').select('*').eq('active', true);
       const { data: servData } = await supabase.from('services').select('*').eq('active', true);
-      
+
       if (catData) {
         setCategories(catData);
         if (catData.length === 1) {
@@ -165,51 +171,33 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
       if (!currentService) return;
 
       setCheckingAvailability(true);
+
+      const firstDayOfMonthStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-01`;
       const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-      const candidateDays: string[] = [];
+      const lastDayOfMonthStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
       const todayStr = new Date().toISOString().split('T')[0];
+      const maxDateObj = new Date();
+      maxDateObj.setDate(maxDateObj.getDate() + 60);
+      const maxDateStr = maxDateObj.toISOString().split('T')[0];
 
-      // Service weekday configuration (0=Sunday, 1=Monday, etc.)
-      const weekdayMap = [
-        currentService.enabled_sunday,
-        currentService.enabled_monday,
-        currentService.enabled_tuesday,
-        currentService.enabled_wednesday,
-        currentService.enabled_thursday,
-        currentService.enabled_friday,
-        currentService.enabled_saturday
-      ];
+      const startDateStr = firstDayOfMonthStr < todayStr ? todayStr : firstDayOfMonthStr;
+      const endDateStr = lastDayOfMonthStr > maxDateStr ? maxDateStr : lastDayOfMonthStr;
 
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        
-        // Filter out past dates
-        if (dateStr < todayStr) continue;
-
-        // Filter out by active weekdays
-        const dateObj = new Date(calendarYear, calendarMonth, d);
-        const dayOfWeek = dateObj.getDay();
-        if (!weekdayMap[dayOfWeek]) continue;
-
-        candidateDays.push(dateStr);
+      if (startDateStr > endDateStr) {
+        setAvailableDays(new Set());
+        setCheckingAvailability(false);
+        return;
       }
 
       try {
-        const checkPromises = candidateDays.map(async (dayStr) => {
-          const slots = await getAvailableSlots({ serviceId: currentService.id, dateStr: dayStr });
-          const hasSlots = slots.some(s => s.available);
-          return { dayStr, hasSlots };
+        const activeDays = await getAvailableDaysForRange({
+          serviceId: currentService.id,
+          startDateStr,
+          endDateStr
         });
 
-        const results = await Promise.all(checkPromises);
-
         if (!isCancelled) {
-          const activeDays = new Set<string>();
-          results.forEach(r => {
-            if (r.hasSlots) {
-              activeDays.add(r.dayStr);
-            }
-          });
           setAvailableDays(activeDays);
         }
       } catch (err) {
@@ -324,10 +312,10 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
   // 7. Final Confirmation of Booking
   const confirmBooking = async (targetClientId: string, payId: string) => {
     if (!selectedService) return;
-    
+
     try {
-      const depositAmountTotal = selectedService.requires_deposit 
-        ? selectedService.deposit_amount * bookingQuantity 
+      const depositAmountTotal = selectedService.requires_deposit
+        ? selectedService.deposit_amount * bookingQuantity
         : 0;
 
       const { data: newBooking, error } = await supabase.from('bookings').insert({
@@ -356,7 +344,8 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           time: selectedTime,
           depositAmount: depositAmountTotal,
           bookingId: newBooking[0].id,
-          quantity: bookingQuantity
+          quantity: bookingQuantity,
+          remainingAmount: (selectedService.price * bookingQuantity) - depositAmountTotal
         });
 
         setStep('success');
@@ -378,7 +367,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
   const getDaysInMonth = (year: number, month: number) => {
     const date = new Date(year, month, 1);
     const days = [];
-    
+
     let startDay = date.getDay();
     startDay = startDay === 0 ? 6 : startDay - 1; // Align to start on Monday
 
@@ -465,26 +454,25 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
       <div className={`hidden sm:grid ${categories.length > 1 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mb-8 text-center text-xs font-bold`}>
         {(categories.length > 1
           ? [
-              { label: '1. Categoría', active: step === 'category' },
-              { label: '2. Servicio', active: step === 'service' },
-              { label: '3. Fecha y Hora', active: step === 'date_time' },
-              { label: '4. Tus Datos', active: step === 'client_info' },
-              { label: '5. Confirmado', active: step === 'payment_sim' || step === 'success' }
-            ]
+            { label: '1. Categoría', active: step === 'category' },
+            { label: '2. Servicio', active: step === 'service' },
+            { label: '3. Fecha y Hora', active: step === 'date_time' },
+            { label: '4. Tus Datos', active: step === 'client_info' },
+            { label: '5. Confirmado', active: step === 'payment_sim' || step === 'success' }
+          ]
           : [
-              { label: '1. Servicio', active: step === 'service' },
-              { label: '2. Fecha y Hora', active: step === 'date_time' },
-              { label: '3. Tus Datos', active: step === 'client_info' },
-              { label: '4. Confirmado', active: step === 'payment_sim' || step === 'success' }
-            ]
+            { label: '1. Servicio', active: step === 'service' },
+            { label: '2. Fecha y Hora', active: step === 'date_time' },
+            { label: '3. Tus Datos', active: step === 'client_info' },
+            { label: '4. Confirmado', active: step === 'payment_sim' || step === 'success' }
+          ]
         ).map((s, idx) => (
-          <div 
+          <div
             key={idx}
-            className={`py-2 px-1.5 rounded-lg transition-all border ${
-              s.active 
-                ? 'bg-primary text-white border-transparent shadow-sm' 
+            className={`py-2 px-1.5 rounded-lg transition-all border ${s.active
+                ? 'bg-primary text-white border-transparent shadow-sm'
                 : 'bg-white text-gray-500 border-neutral-200'
-            }`}
+              }`}
           >
             {s.label}
           </div>
@@ -498,7 +486,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           <span className="text-primary uppercase tracking-wider">{activeStep.label}</span>
         </div>
         <div className="w-full bg-neutral-200 h-2 rounded-full overflow-hidden">
-          <div 
+          <div
             className="bg-primary h-full transition-all duration-300"
             style={{ width: `${(activeStep.num / (categories.length > 1 ? 5 : 4)) * 100}%` }}
           />
@@ -513,8 +501,8 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
 
           <div className="space-y-3">
             {categories.map(cat => (
-              <Card 
-                key={cat.id} 
+              <Card
+                key={cat.id}
                 className="flat-card-interactive border border-neutral-100 hover:border-primary/20 transition-all cursor-pointer"
                 onClick={() => {
                   setSelectedCategory(cat.id);
@@ -545,9 +533,9 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-offblack">Selecciona un Servicio</h3>
             {categories.length > 1 && (
-              <Button 
-                variant="ghost" 
-                onClick={() => setStep('category')} 
+              <Button
+                variant="ghost"
+                onClick={() => setStep('category')}
                 className="text-xs py-1.5 px-3 border border-neutral-200 rounded-lg flex items-center gap-1 hover:bg-neutral-50"
               >
                 <ChevronLeft className="h-3.5 w-3.5" /> Atrás
@@ -562,8 +550,8 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               </div>
             ) : (
               filteredServices.map(serv => (
-                <Card 
-                  key={serv.id} 
+                <Card
+                  key={serv.id}
                   className="flat-card-interactive border border-neutral-100 hover:border-primary/20 transition-all cursor-pointer"
                   onClick={() => {
                     setSelectedService(serv);
@@ -579,13 +567,13 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 font-semibold line-clamp-2">{serv.description}</p>
-                      
+
                       {/* Price info visible on mobile under the title/description */}
                       <div className="flex items-center gap-3 pt-1.5 sm:hidden">
-                        <span className="text-xs font-extrabold text-offblack">${serv.price.toFixed(0)}</span>
+                        <span className="text-xs font-extrabold text-offblack">${formatCurrency(serv.price)}</span>
                         {serv.requires_deposit && (
                           <span className="text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-md">
-                            Seña: ${serv.deposit_amount.toFixed(0)}
+                            Seña: ${formatCurrency(serv.deposit_amount)}
                           </span>
                         )}
                       </div>
@@ -595,14 +583,14 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                     <div className="hidden sm:flex items-center gap-4 shrink-0">
                       <div className="text-right">
                         <span className="text-[10px] font-bold text-gray-400 block uppercase">Precio Total</span>
-                        <span className="text-sm font-extrabold text-offblack">${serv.price.toFixed(0)}</span>
+                        <span className="text-sm font-extrabold text-offblack">${formatCurrency(serv.price)}</span>
                         {serv.requires_deposit && (
-                          <span className="text-[9px] font-bold text-primary block mt-0.5">Seña: ${serv.deposit_amount.toFixed(0)}</span>
+                          <span className="text-[9px] font-bold text-primary block mt-0.5">Seña: ${formatCurrency(serv.deposit_amount)}</span>
                         )}
                       </div>
                       <ChevronRight className="h-5 w-5 text-primary shrink-0" />
                     </div>
-                    
+
                     {/* Chevron always visible on mobile at the right side */}
                     <div className="flex sm:hidden shrink-0">
                       <ChevronRight className="h-5 w-5 text-primary" />
@@ -624,13 +612,13 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               Para: <strong>{selectedService.name}</strong> ({selectedService.estimated_duration_minutes} mins)
             </p>
           </CardHeader>
-          
+
           <CardContent className="py-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Custom Month Calendar Grid */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between bg-neutral-50 p-2 rounded-xl border border-neutral-200/50">
-                  <button 
+                  <button
                     type="button"
                     onClick={handlePrevMonth}
                     disabled={isPrevMonthDisabled()}
@@ -641,7 +629,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                   <span className="text-sm font-bold text-offblack">
                     {MONTHS[calendarMonth]} {calendarYear}
                   </span>
-                  <button 
+                  <button
                     type="button"
                     onClick={handleNextMonth}
                     className="p-1.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer font-bold"
@@ -657,11 +645,11 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 <div className="grid grid-cols-7 gap-1">
                   {getDaysInMonth(calendarYear, calendarMonth).map((day, idx) => {
                     if (!day) return <div key={idx} className="aspect-square"></div>;
-                    
+
                     const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
                     const todayStr = today.toISOString().split('T')[0];
                     const isPast = dateStr < todayStr;
-                    
+
                     const weekdayMap = selectedService ? [
                       selectedService.enabled_sunday,
                       selectedService.enabled_monday,
@@ -682,13 +670,12 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                         type="button"
                         disabled={!isSelectable}
                         onClick={() => setBookingDate(dateStr)}
-                        className={`aspect-square text-xs font-bold rounded-lg border transition-all cursor-pointer flex flex-col items-center justify-center ${
-                          isSelected
+                        className={`aspect-square text-xs font-bold rounded-lg border transition-all cursor-pointer flex flex-col items-center justify-center ${isSelected
                             ? 'bg-primary text-white border-transparent shadow-sm'
                             : isSelectable
                               ? 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50 hover:border-primary/20'
                               : 'bg-neutral-50 text-gray-300 border-transparent opacity-40 line-through cursor-not-allowed'
-                        }`}
+                          }`}
                       >
                         {day.getDate()}
                       </button>
@@ -728,13 +715,12 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                         key={idx}
                         disabled={!slot.available}
                         onClick={() => setSelectedTime(slot.time)}
-                        className={`py-2 px-1 text-center font-bold border rounded-lg cursor-pointer text-xs transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                          !slot.available 
-                            ? 'bg-neutral-50 text-gray-300 border-neutral-100 cursor-not-allowed opacity-40' 
+                        className={`py-2 px-1 text-center font-bold border rounded-lg cursor-pointer text-xs transition-all hover:scale-[1.02] active:scale-[0.98] ${!slot.available
+                            ? 'bg-neutral-50 text-gray-300 border-neutral-100 cursor-not-allowed opacity-40'
                             : selectedTime === slot.time
                               ? 'bg-primary text-white border-transparent shadow-sm'
                               : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
-                        }`}
+                          }`}
                         title={slot.reason}
                       >
                         {slot.time}
@@ -769,23 +755,23 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
             <div className="border-t border-neutral-100 pt-4 mt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-sm text-left">
               <div className="flex justify-between items-center font-bold text-offblack">
                 <span>Precio del servicio ({bookingQuantity} {bookingQuantity === 1 ? 'turno' : 'turnos'}):</span>
-                <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
+                <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
               </div>
               {selectedService.requires_deposit ? (
                 <>
                   <div className="flex justify-between items-center font-bold text-primary">
                     <span>Monto de Seña (Mercado Pago):</span>
-                    <span>${(selectedService.deposit_amount * bookingQuantity).toFixed(2)}</span>
+                    <span>${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
                   </div>
                   <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                     <span>Restante a pagar en local:</span>
-                    <span>${((selectedService.price - selectedService.deposit_amount) * bookingQuantity).toFixed(2)}</span>
+                    <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
                   </div>
                 </>
               ) : (
                 <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                   <span>Restante a pagar en local:</span>
-                  <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
+                  <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
                 </div>
               )}
             </div>
@@ -794,8 +780,8 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               <Button variant="secondary" onClick={() => setStep('service')} className="flex items-center gap-1.5">
                 <ChevronLeft className="h-4 w-4" /> Atrás
               </Button>
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 disabled={!bookingDate || !selectedTime}
                 onClick={() => setStep('client_info')}
               >
@@ -812,7 +798,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           <CardHeader>
             <CardTitle>Completa tus Datos</CardTitle>
             <p className="text-sm text-gray-500 font-semibold">
-              Turno para el <strong>{bookingDate}</strong> a las <strong>{selectedTime} hs</strong>
+              Turno para el <strong>{formatDate(bookingDate)}</strong> a las <strong>{selectedTime} hs</strong>
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -870,23 +856,23 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               <div className="border-t border-neutral-100 pt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-sm text-left">
                 <div className="flex justify-between items-center font-bold text-offblack">
                   <span>Precio del servicio ({bookingQuantity} {bookingQuantity === 1 ? 'turno' : 'turnos'}):</span>
-                  <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
+                  <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
                 </div>
                 {selectedService.requires_deposit ? (
                   <>
                     <div className="flex justify-between items-center font-bold text-primary">
                       <span>Monto de Seña (Mercado Pago):</span>
-                      <span>${(selectedService.deposit_amount * bookingQuantity).toFixed(2)}</span>
+                      <span>${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
                     </div>
                     <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                       <span>Restante a pagar en local:</span>
-                      <span>${((selectedService.price - selectedService.deposit_amount) * bookingQuantity).toFixed(2)}</span>
+                      <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                     <span>Restante a pagar en local:</span>
-                    <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
+                    <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
                   </div>
                 )}
               </div>
@@ -895,9 +881,9 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 <Button type="button" variant="secondary" onClick={() => setStep('date_time')} className="flex items-center gap-1.5">
                   <ChevronLeft className="h-4 w-4" /> Atrás
                 </Button>
-                <Button 
-                  type="submit" 
-                  variant="primary" 
+                <Button
+                  type="submit"
+                  variant="primary"
                   isLoading={loadingClient}
                   disabled={loadingClient || !email || !firstName || !lastName || !phone}
                 >
@@ -922,21 +908,21 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
             <div className="max-w-md mx-auto space-y-4">
               <h4 className="text-lg font-bold text-offblack">Monto de la Seña a Pagar ({bookingQuantity} {bookingQuantity === 1 ? 'turno' : 'turnos'}):</h4>
               <div className="text-3xl font-extrabold text-primary bg-neutral-50 border border-neutral-200 py-4 rounded-xl tracking-tight">
-                ${(selectedService.deposit_amount * bookingQuantity).toFixed(2)}
+                ${formatCurrency(selectedService.deposit_amount * bookingQuantity)}
               </div>
 
               <div className="bg-neutral-50/50 p-4 rounded-xl border border-neutral-200 text-xs text-left space-y-2 text-gray-500 font-semibold">
                 <div className="flex justify-between border-b border-neutral-200 pb-1.5">
                   <span>Precio del Servicio:</span>
-                  <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
+                  <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
                 </div>
                 <div className="flex justify-between border-b border-neutral-200 pb-1.5 text-primary">
                   <span>Seña a abonar:</span>
-                  <span>-${(selectedService.deposit_amount * bookingQuantity).toFixed(2)}</span>
+                  <span>-${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
                 </div>
                 <div className="flex justify-between text-success font-extrabold text-sm">
                   <span>Restante a pagar en local:</span>
-                  <span>${((selectedService.price - selectedService.deposit_amount) * bookingQuantity).toFixed(2)}</span>
+                  <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
                 </div>
               </div>
 
@@ -978,26 +964,26 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               <h4 className="font-extrabold border-b border-neutral-200 pb-2 text-base text-offblack flex items-center gap-1.5">
                 Detalles del Turno
               </h4>
-              
+
               <div className="space-y-2.5 text-sm text-gray-600 font-semibold">
                 <p className="flex items-center gap-2.5">
-                  <Scissors className="h-4 w-4 text-secondary flex-shrink-0" /> 
+                  <Scissors className="h-4 w-4 text-secondary flex-shrink-0" />
                   <span><strong>Servicio:</strong> {selectedService.name}</span>
                 </p>
                 <p className="flex items-center gap-2.5">
-                  <Scissors className="h-4 w-4 text-secondary flex-shrink-0" /> 
+                  <Scissors className="h-4 w-4 text-secondary flex-shrink-0" />
                   <span><strong>Cantidad de turnos / mascotas:</strong> {bookingQuantity}</span>
                 </p>
                 <p className="flex items-center gap-2.5">
-                  <Calendar className="h-4 w-4 text-secondary flex-shrink-0" /> 
-                  <span><strong>Fecha:</strong> {bookingDate}</span>
+                  <Calendar className="h-4 w-4 text-secondary flex-shrink-0" />
+                  <span><strong>Fecha:</strong> {formatDate(bookingDate)}</span>
                 </p>
                 <p className="flex items-center gap-2.5">
-                  <Clock className="h-4 w-4 text-secondary flex-shrink-0" /> 
+                  <Clock className="h-4 w-4 text-secondary flex-shrink-0" />
                   <span><strong>Horario:</strong> {selectedTime} hs</span>
                 </p>
                 <p className="flex items-center gap-2.5">
-                  <User className="h-4 w-4 text-secondary flex-shrink-0" /> 
+                  <User className="h-4 w-4 text-secondary flex-shrink-0" />
                   <span><strong>Cliente:</strong> {firstName} {lastName}</span>
                 </p>
 
@@ -1005,23 +991,23 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 <div className="border-t border-neutral-200/50 pt-2.5 mt-2 space-y-1.5 text-xs text-gray-500">
                   <div className="flex justify-between">
                     <span>Precio Total:</span>
-                    <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
+                    <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
                   </div>
                   {selectedService.requires_deposit ? (
                     <>
                       <div className="flex justify-between text-success">
                         <span>Seña Abonada (MP):</span>
-                        <span>-${(selectedService.deposit_amount * bookingQuantity).toFixed(2)} (Ref: {paymentId})</span>
+                        <span>-${formatCurrency(selectedService.deposit_amount * bookingQuantity)} (Ref: {paymentId})</span>
                       </div>
                       <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-1.5">
                         <span>Restante a pagar en local:</span>
-                        <span>${((selectedService.price - selectedService.deposit_amount) * bookingQuantity).toFixed(2)}</span>
+                        <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
                       </div>
                     </>
                   ) : (
                     <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-1.5">
                       <span>Restante a pagar en local:</span>
-                      <span>${(selectedService.price * bookingQuantity).toFixed(2)}</span>
+                      <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
                     </div>
                   )}
                 </div>
@@ -1035,7 +1021,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
 
             <div className="space-y-3 max-w-sm mx-auto pt-4">
               {/* 1. Google Calendar */}
-              <a 
+              <a
                 href={getGoogleCalendarUrl({
                   serviceName: selectedService.name,
                   date: bookingDate,
@@ -1051,9 +1037,9 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 Agregar a Google Calendar
               </a>
 
-              {/* 2. Apple Calendar */}
-              <Button 
-                variant="secondary" 
+              {/* 2. Otros Calendarios */}
+              <Button
+                variant="secondary"
                 onClick={() => downloadICSFile({
                   serviceName: selectedService.name,
                   date: bookingDate,
@@ -1064,29 +1050,13 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 })}
                 className="w-full flex items-center justify-center gap-2 py-2.5 text-sm"
               >
-                Agregar a Apple Calendar (Descargar .ics)
-              </Button>
-
-              {/* 3. Otros Calendarios */}
-              <Button 
-                variant="ghost" 
-                onClick={() => downloadICSFile({
-                  serviceName: selectedService.name,
-                  date: bookingDate,
-                  time: selectedTime,
-                  durationMinutes: selectedService.estimated_duration_minutes,
-                  businessName: settings?.business_name || 'Tienda de Mascotas Del Bono',
-                  address: settings?.address || 'Av. Del Bono 123, San Juan'
-                })}
-                className="w-full flex items-center justify-center gap-2 py-2.5 text-xs text-gray-500 hover:text-offblack"
-              >
-                Descargar para otros Calendarios (.ics)
+                Otros Calendarios (.ics)
               </Button>
 
               {/* 4. Finalizar Button */}
               <div className="border-t border-neutral-100 pt-4 mt-2">
-                <Button 
-                  variant="primary" 
+                <Button
+                  variant="primary"
                   onClick={() => {
                     if (categories.length === 1) {
                       setStep('service');

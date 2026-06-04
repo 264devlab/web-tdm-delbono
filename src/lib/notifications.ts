@@ -1,5 +1,8 @@
 // Decoupled Notification Provider Interfaces for Petshop Booking
 
+import { supabase } from '../utils/supabase';
+import { formatCurrency, formatDate } from '../utils/format';
+
 export type NotificationType = 'CONFIRMATION' | 'RESCHEDULE' | 'CANCELLATION' | 'REMINDER';
 
 export interface NotificationPayload {
@@ -12,6 +15,7 @@ export interface NotificationPayload {
   depositAmount: number;
   bookingId?: string;
   quantity?: number;
+  remainingAmount?: number;
 }
 
 export interface NotificationProvider {
@@ -55,8 +59,17 @@ function logNotification(channel: 'email' | 'whatsapp', type: NotificationType, 
 // -------------------------------------------------------------
 // EMAIL HTML GENERATOR (Styled template)
 // -------------------------------------------------------------
-function generateEmailHtml(type: NotificationType, payload: NotificationPayload): string {
+function generateEmailHtml(type: NotificationType, payload: NotificationPayload, settings: any): string {
   const manageUrl = payload.bookingId ? `${window.location.origin}/turno/${payload.bookingId}` : '';
+
+  let logoSrc = settings.logo_url;
+  if (!logoSrc) {
+    if (window.location.origin.includes('localhost')) {
+      logoSrc = 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=120&h=120';
+    } else {
+      logoSrc = window.location.origin + '/logo.png';
+    }
+  }
 
   let title = '';
   let intro = '';
@@ -70,11 +83,12 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
       showButton = true;
       detailsHtml = `
         <div style="background-color: #fcfbf7; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 15px;">
-          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Fecha:</strong> ${payload.date}</p>
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Fecha:</strong> ${formatDate(payload.date)}</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>⏰ Hora:</strong> ${payload.time} hs</p>
-          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> Av. Del Bono 123, San Juan</p>
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> ${settings.address}</p>
           ${payload.quantity && payload.quantity > 1 ? `<p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>🐾 Cantidad de turnos/mascotas:</strong> ${payload.quantity}</p>` : ''}
-          ${payload.depositAmount > 0 ? `<p style="margin: 0; font-size: 14px; color: #10b981;"><strong>💰 Seña Abonada Total:</strong> $${payload.depositAmount.toFixed(2)}</p>` : ''}
+          ${payload.depositAmount > 0 ? `<p style="margin: 0 0 10px 0; font-size: 14px; color: #10b981;"><strong>💰 Seña Abonada Total:</strong> $${formatCurrency(payload.depositAmount)}</p>` : ''}
+          ${payload.remainingAmount !== undefined ? `<p style="margin: 0; font-size: 14px; color: #0f766e;"><strong>💵 Restante a pagar en local:</strong> $${formatCurrency(payload.remainingAmount)}</p>` : ''}
         </div>
       `;
       break;
@@ -84,19 +98,19 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
       showButton = true;
       detailsHtml = `
         <div style="background-color: #fcfbf7; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 15px;">
-          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Nueva Fecha:</strong> ${payload.date}</p>
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Nueva Fecha:</strong> ${formatDate(payload.date)}</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>⏰ Nueva Hora:</strong> ${payload.time} hs</p>
-          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> Av. Del Bono 123, San Juan</p>
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> ${settings.address}</p>
           ${payload.quantity && payload.quantity > 1 ? `<p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>🐾 Cantidad de turnos/mascotas:</strong> ${payload.quantity}</p>` : ''}
         </div>
       `;
       break;
     case 'CANCELLATION':
       title = 'Turno Cancelado ❌';
-      intro = `Hola <strong>${payload.clientName}</strong>, lamentamos informarte que tu turno para el servicio de <strong>"${payload.serviceName}"</strong> ${payload.quantity && payload.quantity > 1 ? `(${payload.quantity} turnos/mascotas) ` : ''}programado para el día ${payload.date} a las ${payload.time} hs ha sido <strong>cancelado</strong>.`;
+      intro = `Hola <strong>${payload.clientName}</strong>, lamentamos informarte que tu turno para el servicio de <strong>"${payload.serviceName}"</strong> ${payload.quantity && payload.quantity > 1 ? `(${payload.quantity} turnos/mascotas) ` : ''}programado para el día ${formatDate(payload.date)} a las ${payload.time} hs ha sido <strong>cancelado</strong>.`;
       detailsHtml = payload.depositAmount > 0 ? `
         <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 20px; margin-top: 15px;">
-          <p style="margin: 0; font-size: 14px; color: #b45309;">⚠️ <strong>Reembolso de Seña:</strong> Al haber abonado una seña de $${payload.depositAmount.toFixed(2)}, nos pondremos en contacto contigo a la brevedad para realizar el reembolso correspondiente.</p>
+          <p style="margin: 0; font-size: 14px; color: #b45309;">⚠️ <strong>Reembolso de Seña:</strong> Al haber abonado una seña de $${formatCurrency(payload.depositAmount)}, nos pondremos en contacto contigo a la brevedad para realizar el reembolso correspondiente.</p>
         </div>
       ` : '';
       break;
@@ -106,9 +120,9 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
       showButton = true;
       detailsHtml = `
         <div style="background-color: #fcfbf7; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 15px;">
-          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Fecha:</strong> ${payload.date}</p>
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📅 Fecha:</strong> ${formatDate(payload.date)}</p>
           <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>⏰ Hora:</strong> ${payload.time} hs</p>
-          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> Av. Del Bono 123, San Juan</p>
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>📍 Lugar:</strong> ${settings.address}</p>
           ${payload.quantity && payload.quantity > 1 ? `<p style="margin: 0 0 10px 0; font-size: 14px; color: #2d3142;"><strong>🐾 Cantidad de turnos/mascotas:</strong> ${payload.quantity}</p>` : ''}
         </div>
       `;
@@ -131,9 +145,9 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
               <tr>
                 <td style="background-color: #d97706; padding: 30px; text-align: center;">
                   <div style="display: inline-block; background-color: #ffffff; border-radius: 50%; padding: 12px; margin-bottom: 12px;">
-                    <img src="${window.location.origin}/logo.png" alt="Del Bono Logo" style="width: 48px; height: 48px; border-radius: 50%; display: block; object-fit: cover;">
+                    <img src="${logoSrc}" alt="Del Bono Logo" style="width: 48px; height: 48px; border-radius: 50%; display: block; object-fit: cover;">
                   </div>
-                  <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">Tienda de Mascotas Del Bono</h1>
+                  <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">${settings.business_name}</h1>
                   <p style="margin: 4px 0 0 0; color: #fef3c7; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Servicios & Turnos</p>
                 </td>
               </tr>
@@ -155,8 +169,11 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
                     </div>
                   ` : ''}
                   
-                  <p style="margin: 30px 0 0 0; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #9ca3af; font-size: 12px; text-align: center;">
-                    Av. Del Bono 123, San Juan | Tel: +54 264 4567890
+                  <p style="margin: 30px 0 0 0; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #9ca3af; font-size: 12px; text-align: center; line-height: 1.8;">
+                    📍 <strong>Dirección:</strong> ${settings.address} <br/>
+                    📞 <strong>Teléfono:</strong> ${settings.phone}
+                    ${settings.instagram ? `<br/>📸 <strong>Instagram:</strong> @${settings.instagram}` : ''}
+                    ${settings.facebook ? ` | 🌐 <strong>Facebook:</strong> ${settings.facebook}` : ''}
                   </p>
                 </td>
               </tr>
@@ -176,6 +193,24 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload)
     </body>
     </html>
   `;
+}
+
+// Helper to fetch business settings dynamically
+async function getBusinessSettings() {
+  try {
+    const { data } = await supabase.from('business_settings').select('*').limit(1);
+    if (data && data.length > 0) {
+      return data[0];
+    }
+  } catch (err) {
+    console.warn('Error fetching business settings:', err);
+  }
+  return {
+    business_name: 'Tienda de Mascotas Del Bono',
+    address: 'Av. Del Bono 123, San Juan',
+    phone: '+54 264 4567890',
+    logo_url: ''
+  };
 }
 
 // -------------------------------------------------------------
@@ -203,7 +238,8 @@ export class EmailProvider implements NotificationProvider {
         break;
     }
 
-    const emailHtml = generateEmailHtml(type, payload);
+    const settings = await getBusinessSettings();
+    const emailHtml = generateEmailHtml(type, payload, settings);
 
     // Guardar logs locales para simulaciones
     logNotification('email', type, email, subject, emailHtml);
@@ -216,7 +252,7 @@ export class EmailProvider implements NotificationProvider {
         headers['x-api-key'] = waApiKey;
       }
 
-      const res = await fetch(`${WA_SERVER_URL}/api/email/send`, {
+      const res = await fetch('/api/email/send', {
         method: 'POST',
         headers,
         body: JSON.stringify({ to: email, subject, html: emailHtml }),
@@ -246,8 +282,10 @@ export class WhatsAppProvider implements NotificationProvider {
     const phone = payload.toPhone;
     if (!phone) return false;
 
+    const settings = await getBusinessSettings();
+
     let message = '';
-    const prefix = `*Tienda de Mascotas Del Bono*\n\n`;
+    const prefix = `*${settings.business_name}*\n\n`;
 
     switch (type) {
       case 'CONFIRMATION':
@@ -255,10 +293,11 @@ export class WhatsAppProvider implements NotificationProvider {
           `📋 *Detalles del Turno:*\n` +
           `• *Servicio:* ${payload.serviceName}\n` +
           (payload.quantity && payload.quantity > 1 ? `• *Cantidad de turnos:* ${payload.quantity}\n` : '') +
-          `• *Fecha:* ${payload.date}\n` +
+          `• *Fecha:* ${formatDate(payload.date)}\n` +
           `• *Hora:* ${payload.time} hs\n` +
-          `• *Lugar:* Av. Del Bono 123\n` +
-          (payload.depositAmount > 0 ? `• *Seña abonada:* $${payload.depositAmount.toFixed(2)}\n` : '') +
+          `• *Lugar:* ${settings.address}\n` +
+          (payload.depositAmount > 0 ? `• *Seña abonada:* $${formatCurrency(payload.depositAmount)}\n` : '') +
+          (payload.remainingAmount !== undefined ? `• *Restante a pagar en local:* $${formatCurrency(payload.remainingAmount)}\n` : '') +
           (payload.bookingId ? `• *Gestionar Turno:* ${window.location.origin}/turno/${payload.bookingId}\n` : '') +
           `\n¡Te esperamos con tu mascota! 🐶🐱\n\n_Por cualquier consulta o inconveniente, puedes responder a este mensaje._`;
         break;
@@ -267,15 +306,15 @@ export class WhatsAppProvider implements NotificationProvider {
           `📋 *Nuevos Detalles:*\n` +
           `• *Servicio:* ${payload.serviceName}\n` +
           (payload.quantity && payload.quantity > 1 ? `• *Cantidad de turnos:* ${payload.quantity}\n` : '') +
-          `• *Nueva Fecha:* ${payload.date}\n` +
+          `• *Nueva Fecha:* ${formatDate(payload.date)}\n` +
           `• *Nueva Hora:* ${payload.time} hs\n` +
-          `• *Lugar:* Av. Del Bono 123\n` +
+          `• *Lugar:* ${settings.address}\n` +
           (payload.bookingId ? `• *Gestionar Turno:* ${window.location.origin}/turno/${payload.bookingId}\n` : '') +
           `\n¡Gracias por tu paciencia y nos vemos pronto! 🐾`;
         break;
       case 'CANCELLATION':
-        message = `Hola *${payload.clientName}*.\n\nTe informamos que tu turno para *${payload.serviceName}* ${payload.quantity && payload.quantity > 1 ? `(${payload.quantity} turnos/mascotas) ` : ''}agendado para el día *${payload.date}* a las *${payload.time} hs* ha sido *cancelado*. ❌\n\n` +
-          (payload.depositAmount > 0 ? `👉 Nos comunicaremos a la brevedad para realizar el reembolso correspondiente de tu seña ($${payload.depositAmount.toFixed(2)}).\n\n` : '') +
+        message = `Hola *${payload.clientName}*.\n\nTe informamos que tu turno para *${payload.serviceName}* ${payload.quantity && payload.quantity > 1 ? `(${payload.quantity} turnos/mascotas) ` : ''}agendado para el día *${formatDate(payload.date)}* a las *${payload.time} hs* ha sido *cancelado*. ❌\n\n` +
+          (payload.depositAmount > 0 ? `👉 Nos comunicaremos a la brevedad para realizar el reembolso correspondiente de tu seña ($${formatCurrency(payload.depositAmount)}).\n\n` : '') +
           `Quedamos a tu disposición si deseas agendar un nuevo turno en el futuro. ¡Saludos! 🐾`;
         break;
       case 'REMINDER':
@@ -284,7 +323,7 @@ export class WhatsAppProvider implements NotificationProvider {
           `• *Servicio:* ${payload.serviceName}\n` +
           (payload.quantity && payload.quantity > 1 ? `• *Cantidad de turnos:* ${payload.quantity}\n` : '') +
           `• *Hora:* ${payload.time} hs\n` +
-          `• *Lugar:* Av. Del Bono 123\n\n` +
+          `• *Lugar:* ${settings.address}\n\n` +
           `🐶🐱 ¡Te esperamos con tu mascota! Por favor, responde a este mensaje para confirmar tu asistencia.`;
         break;
     }

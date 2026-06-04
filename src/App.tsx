@@ -15,7 +15,7 @@ import { Button } from './components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from './components/ui/Card';
 import {
   LayoutDashboard, Calendar, Briefcase, Users, BarChart2,
-  Settings, LogOut, X, Menu, MessageCircle
+  Settings, LogOut, X, Menu, MessageCircle, MapPin, Phone
 } from 'lucide-react';
 
 // -------------------------------------------------------------
@@ -528,12 +528,18 @@ const AppContent: React.FC<{
 
       {/* Footer */}
       <footer className="border-t border-neutral-100 bg-white py-8 px-6 text-center text-xs font-semibold text-gray-400">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="m-0">© 2026 {settings?.business_name || 'Tienda de Mascotas Del Bono'}. Todos los derechos reservados.</p>
+        <div className="max-w-6xl mx-auto flex flex-col items-center gap-6">
+          {/* Business Info (Location, Phone, Socials) */}
           <div className="flex gap-4 flex-wrap justify-center items-center">
-            <span>{settings?.address || 'Av. Del Bono 123, San Juan'}</span>
+            <span className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-gray-400" />
+              {settings?.address || 'Av. Del Bono 123, San Juan'}
+            </span>
             <span>•</span>
-            <span>{settings?.phone || '+54 264 4567890'}</span>
+            <span className="flex items-center gap-1.5">
+              <Phone className="h-3.5 w-3.5 text-gray-400" />
+              {settings?.phone || '+54 264 4567890'}
+            </span>
             {settings?.instagram && (
               <>
                 <span>•</span>
@@ -541,8 +547,13 @@ const AppContent: React.FC<{
                   href={`https://instagram.com/${settings.instagram}`} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="hover:text-primary transition-colors no-underline text-gray-400"
+                  className="hover:text-primary transition-colors no-underline text-gray-400 flex items-center gap-1.5"
                 >
+                  <svg className="h-3.5 w-3.5 text-gray-400 hover:text-primary fill-none stroke-current stroke-2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                  </svg>
                   @{settings.instagram}
                 </a>
               </>
@@ -554,12 +565,32 @@ const AppContent: React.FC<{
                   href={`https://facebook.com/${settings.facebook}`} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="hover:text-primary transition-colors no-underline text-gray-400"
+                  className="hover:text-primary transition-colors no-underline text-gray-400 flex items-center gap-1.5"
                 >
+                  <svg className="h-3.5 w-3.5 text-gray-400 hover:text-primary fill-none stroke-current stroke-2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                  </svg>
                   Facebook
                 </a>
               </>
             )}
+          </div>
+
+          {/* Copyright & Dev Lab Credits at the very bottom */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 border-t border-neutral-100/50 w-full pt-4 text-[10px] text-gray-400">
+            <span>© 2026 {settings?.business_name || 'Tienda de Mascotas Del Bono'}. Todos los derechos reservados.</span>
+            <span className="hidden sm:inline">•</span>
+            <span>
+              Desarrollado por{' '}
+              <a 
+                href="https://www.264devlab.com.ar" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="hover:text-primary transition-colors font-bold no-underline text-gray-400"
+              >
+                264DevLab
+              </a>
+            </span>
           </div>
         </div>
       </footer>

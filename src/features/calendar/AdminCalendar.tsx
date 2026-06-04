@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
 import { getAvailableSlots, type BookingSlot } from '../../utils/availability';
+import { formatCurrency, formatDate, formatDateShort } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
@@ -192,7 +193,7 @@ export const AdminCalendar: React.FC = () => {
       <div className="bg-white border border-neutral-100 rounded-2xl shadow-sm overflow-hidden text-left">
         <div className="bg-neutral-50 p-4 border-b border-neutral-150 flex justify-between items-center">
           <span className="text-sm font-bold text-offblack">Horario</span>
-          <span className="text-sm font-bold text-offblack">Turnos del Día ({currentDate})</span>
+          <span className="text-sm font-bold text-offblack">Turnos del Día ({formatDate(currentDate)})</span>
         </div>
 
         <div className="divide-y divide-neutral-100">
@@ -257,7 +258,7 @@ export const AdminCalendar: React.FC = () => {
                 return (
                   <th key={idx} className={`p-3 text-xs font-bold text-offblack text-center border-r border-neutral-100 last:border-r-0 ${isFocused ? 'bg-primary/5 text-primary' : ''}`}>
                     <div>{WEEKDAYS[idx]}</div>
-                    <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{dateStr.substring(5)}</div>
+                    <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{formatDateShort(dateStr).substring(0, 5)}</div>
                   </th>
                 );
               })}
@@ -681,7 +682,8 @@ export const AdminCalendar: React.FC = () => {
           time: manualTime,
           depositAmount: 0,
           bookingId: newBooking[0].id,
-          quantity: manualQuantity
+          quantity: manualQuantity,
+          remainingAmount: (selectedServiceObj.price || 0) * manualQuantity
         });
 
         // Add to calendar state directly if matches current filters
@@ -791,7 +793,7 @@ export const AdminCalendar: React.FC = () => {
               {/* Booking Overview info */}
               <div className="bg-neutral-50 border border-neutral-100 p-4 rounded-xl space-y-2">
                 <h3 className="text-base font-extrabold border-b border-neutral-200 pb-2 text-offblack">{selectedBooking.services?.name}</h3>
-                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><CalendarRange className="h-4 w-4 text-primary" /> <strong>Fecha:</strong> {selectedBooking.booking_date}</p>
+                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><CalendarRange className="h-4 w-4 text-primary" /> <strong>Fecha:</strong> {formatDate(selectedBooking.booking_date)}</p>
                 <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Clock className="h-4 w-4 text-primary" /> <strong>Hora:</strong> {selectedBooking.booking_time.substring(0, 5)} hs ({selectedBooking.duration} min)</p>
                 <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Scissors className="h-4 w-4 text-primary" /> <strong>Cantidad:</strong> {selectedBooking.quantity || 1} { (selectedBooking.quantity || 1) === 1 ? 'turno' : 'turnos' }</p>
                 <p className="text-sm text-gray-600 font-semibold flex items-center gap-2">
@@ -814,23 +816,23 @@ export const AdminCalendar: React.FC = () => {
               <div className="space-y-1.5 border-t border-neutral-100 pt-4 text-gray-600 font-semibold text-sm text-left">
                 <div className="flex justify-between">
                   <span>Precio Total:</span>
-                  <span>${(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)).toFixed(2)}</span>
+                  <span>${formatCurrency(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1))}</span>
                 </div>
                 {selectedBooking.deposit_amount > 0 ? (
                   <>
                     <div className="flex justify-between text-success">
                       <span>Seña Abonada (MP):</span>
-                      <span>-${selectedBooking.deposit_amount.toFixed(2)}</span>
+                      <span>-${formatCurrency(selectedBooking.deposit_amount)}</span>
                     </div>
                     <div className="flex justify-between text-offblack font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
                       <span>Resta pagar en local:</span>
-                      <span>${((((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)) - selectedBooking.deposit_amount).toFixed(2)}</span>
+                      <span>${formatCurrency((((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)) - selectedBooking.deposit_amount)}</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex justify-between text-success font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
                     <span>Resta pagar en local:</span>
-                    <span>${(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)).toFixed(2)}</span>
+                    <span>${formatCurrency(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1))}</span>
                   </div>
                 )}
               </div>

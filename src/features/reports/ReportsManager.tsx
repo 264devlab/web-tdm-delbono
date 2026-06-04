@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { formatCurrency, formatDate } from '../../utils/format';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
 import { Download, BarChart2, DollarSign, Calendar, Users, Briefcase } from 'lucide-react';
 
@@ -109,7 +110,7 @@ export const ReportsManager: React.FC = () => {
       c.first_name,
       c.last_name,
       c.phone,
-      c.created_at
+      formatDate(c.created_at)
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r: any[]) => r.map((val: any) => `"${val || ''}"`).join(','))].join('\n');
@@ -137,13 +138,13 @@ export const ReportsManager: React.FC = () => {
       b.clients?.email || 'N/A',
       `${b.clients?.first_name || ''} ${b.clients?.last_name || ''}`,
       b.services?.name || 'N/A',
-      b.booking_date,
+      formatDate(b.booking_date),
       b.booking_time,
       b.duration,
-      b.deposit_amount,
+      formatCurrency(b.deposit_amount),
       b.status,
       b.payment_id || 'N/A',
-      b.created_at
+      formatDate(b.created_at)
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r: any[]) => r.map((val: any) => `"${val || ''}"`).join(','))].join('\n');
@@ -174,7 +175,7 @@ export const ReportsManager: React.FC = () => {
       s.estimated_duration_minutes,
       s.active ? 'SÍ' : 'NO',
       s.requires_deposit ? 'SÍ' : 'NO',
-      s.deposit_amount,
+      formatCurrency(s.deposit_amount),
       s.max_concurrent_bookings
     ]);
 
@@ -203,13 +204,13 @@ export const ReportsManager: React.FC = () => {
     const headers = ['ID Reserva', 'Fecha Turno', 'Cliente Email', 'Cliente Nombre', 'Servicio', 'Seña Cobrada', 'Referencia Pago MP', 'Fecha Transacción'];
     const rows = paidBookings.map((b: any) => [
       b.id,
-      b.booking_date,
+      formatDate(b.booking_date),
       b.clients?.email || 'N/A',
       `${b.clients?.first_name || ''} ${b.clients?.last_name || ''}`,
       b.services?.name || 'N/A',
-      b.deposit_amount,
+      formatCurrency(b.deposit_amount),
       b.payment_id || 'N/A',
-      b.updated_at
+      formatDate(b.updated_at)
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r: any[]) => r.map((val: any) => `"${val || ''}"`).join(','))].join('\n');
@@ -265,7 +266,7 @@ export const ReportsManager: React.FC = () => {
                 <DollarSign className="h-5 w-5 text-success" />
                 <div>
                   <span className="text-[10px] font-bold text-success/80 uppercase">Recaudado Señas</span>
-                  <p className="text-xl font-extrabold text-success m-0">${stats.totalRevenue.toFixed(0)}</p>
+                  <p className="text-xl font-extrabold text-success m-0">${formatCurrency(stats.totalRevenue)}</p>
                 </div>
               </CardContent>
             </Card>

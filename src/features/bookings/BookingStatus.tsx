@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
-import { getAvailableSlots, type BookingSlot } from '../../utils/availability';
+import { getAvailableSlots, getAvailableDaysForRange, type BookingSlot } from '../../utils/availability';
+import { formatCurrency, formatDate } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../../components/ui/Card';
 import { notifications } from '../../lib/notifications';
@@ -104,50 +105,35 @@ export const BookingStatus: React.FC = () => {
     async function loadMonthAvailability() {
       const currentService = booking.services;
       setCheckingAvailability(true);
+      
+      const firstDayOfMonthStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-01`;
       const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-      const candidateDays: string[] = [];
+      const lastDayOfMonthStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
       const todayStr = new Date().toISOString().split('T')[0];
+      const maxDateObj = new Date();
+      maxDateObj.setDate(maxDateObj.getDate() + 60);
+      const maxDateStr = maxDateObj.toISOString().split('T')[0];
 
-      const weekdayMap = [
-        currentService.enabled_sunday,
-        currentService.enabled_monday,
-        currentService.enabled_tuesday,
-        currentService.enabled_wednesday,
-        currentService.enabled_thursday,
-        currentService.enabled_friday,
-        currentService.enabled_saturday
-      ];
+      const startDateStr = firstDayOfMonthStr < todayStr ? todayStr : firstDayOfMonthStr;
+      const endDateStr = lastDayOfMonthStr > maxDateStr ? maxDateStr : lastDayOfMonthStr;
 
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        if (dateStr < todayStr) continue;
-
-        const dateObj = new Date(calendarYear, calendarMonth, d);
-        const dayOfWeek = dateObj.getDay();
-        if (!weekdayMap[dayOfWeek]) continue;
-
-        candidateDays.push(dateStr);
+      if (startDateStr > endDateStr) {
+        setAvailableDays(new Set());
+        setCheckingAvailability(false);
+        return;
       }
 
       try {
-        const checkPromises = candidateDays.map(async (dayStr) => {
-          const slots = await getAvailableSlots({ 
-            serviceId: currentService.id, 
-            dateStr: dayStr,
-            quantity: booking.quantity || 1,
-            excludeBookingId: booking.id
-          });
-          const hasSlots = slots.some(s => s.available);
-          return { dayStr, hasSlots };
+        const activeDays = await getAvailableDaysForRange({
+          serviceId: currentService.id,
+          startDateStr,
+          endDateStr,
+          quantity: booking.quantity || 1,
+          excludeBookingId: booking.id
         });
 
-        const results = await Promise.all(checkPromises);
-
         if (!isCancelled) {
-          const activeDays = new Set<string>();
-          results.forEach(r => {
-            if (r.hasSlots) activeDays.add(r.dayStr);
-          });
           setAvailableDays(activeDays);
         }
       } catch (err) {
@@ -385,7 +371,7 @@ export const BookingStatus: React.FC = () => {
               </p>
               <p className="flex items-center gap-2.5">
                 <Calendar className="h-4 w-4 text-secondary shrink-0" />
-                <span><strong>Fecha:</strong> {booking.booking_date}</span>
+                <span><strong>Fecha:</strong> {formatDate(booking.booking_date)}</span>
               </p>
               <p className="flex items-center gap-2.5">
                 <Clock className="h-4 w-4 text-secondary shrink-0" />
@@ -400,23 +386,23 @@ export const BookingStatus: React.FC = () => {
             <div className="border-t border-neutral-200/50 pt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-xs text-gray-500">
               <div className="flex justify-between font-semibold text-offblack text-sm">
                 <span>Precio Total:</span>
-                <span>${(booking.services.price * (booking.quantity || 1)).toFixed(2)}</span>
+                <span>${formatCurrency(booking.services.price * (booking.quantity || 1))}</span>
               </div>
               {booking.deposit_amount > 0 ? (
                 <>
                   <div className="flex justify-between text-success">
                     <span>Seña Abonada (MP):</span>
-                    <span>-${booking.deposit_amount.toFixed(2)}</span>
+                    <span>-${formatCurrency(booking.deposit_amount)}</span>
                   </div>
                   <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-2 mt-1">
                     <span>Restante a pagar en local:</span>
-                    <span>${((booking.services.price * (booking.quantity || 1)) - booking.deposit_amount).toFixed(2)}</span>
+                    <span>${formatCurrency((booking.services.price * (booking.quantity || 1)) - booking.deposit_amount)}</span>
                   </div>
                 </>
               ) : (
                 <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-2 mt-1">
                   <span>Restante a pagar en local:</span>
-                  <span>${(booking.services.price * (booking.quantity || 1)).toFixed(2)}</span>
+                  <span>${formatCurrency(booking.services.price * (booking.quantity || 1))}</span>
                 </div>
               )}
             </div>
@@ -484,7 +470,7 @@ export const BookingStatus: React.FC = () => {
 
               {booking.deposit_amount > 0 && (
                 <div className="bg-yellow-50 border border-warning/15 p-3.5 rounded-xl text-xs text-warning font-semibold text-left">
-                  ⚠️ <strong>Nota sobre la seña:</strong> Has abonado una seña de <strong>${booking.deposit_amount.toFixed(2)}</strong>. Nos pondremos en contacto contigo a la brevedad para coordinar la devolución o reubicación del saldo según corresponda.
+                  ⚠️ <strong>Nota sobre la seña:</strong> Has abonado una seña de <strong>${formatCurrency(booking.deposit_amount)}</strong>. Nos pondremos en contacto contigo a la brevedad para coordinar la devolución o reubicación del saldo según corresponda.
                 </div>
               )}
             </CardContent>
