@@ -495,7 +495,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
       {/* Visual Header */}
       <div className="mb-8 border-b border-neutral-100 pb-6">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-offblack m-0">Reserva de Turnos</h1>
-        <p className="text-gray-400 mt-1 font-semibold text-sm">{settings?.business_name || 'Tienda de Mascotas Del Bono'}</p>
+        <p className="text-gray-400 mt-1 font-semibold text-sm">{settings?.business_name || 'Negocio'}</p>
       </div>
 
       {/* Progress Tracker - Desktop */}
@@ -1103,8 +1103,8 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                   date: bookingDate,
                   time: selectedTime,
                   durationMinutes: selectedService.estimated_duration_minutes,
-                  businessName: settings?.business_name || 'Tienda de Mascotas Del Bono',
-                  address: settings?.address || 'Av. Del Bono 123, San Juan'
+                  businessName: settings?.business_name || 'Negocio',
+                  address: settings?.address || ''
                 })}
                 target="_blank"
                 rel="noreferrer"
@@ -1121,8 +1121,8 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                   date: bookingDate,
                   time: selectedTime,
                   durationMinutes: selectedService.estimated_duration_minutes,
-                  businessName: settings?.business_name || 'Tienda de Mascotas Del Bono',
-                  address: settings?.address || 'Av. Del Bono 123, San Juan'
+                  businessName: settings?.business_name || 'Negocio',
+                  address: settings?.address || ''
                 })}
                 className="w-full flex items-center justify-center gap-2 py-2.5 text-sm"
               >

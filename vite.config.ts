@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
                   const { to, subject, html } = parsed;
 
                   const RESEND_API_KEY = env.RESEND_API_KEY || '';
-                  const EMAIL_FROM = env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <turnos@noreply.264devlab.com.ar>';
+                  const EMAIL_FROM = env.EMAIL_FROM || 'Notificaciones <turnos@noreply.264devlab.com.ar>';
 
                   console.log(`[Vite Dev Server] Intercepted /api/email/send. Sending via Resend to ${to}...`);
 

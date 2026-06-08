@@ -145,7 +145,7 @@ function generateEmailHtml(type: NotificationType, payload: NotificationPayload,
               <tr>
                 <td style="background-color: #d97706; padding: 30px; text-align: center;">
                   <div style="display: inline-block; background-color: #ffffff; border-radius: 50%; padding: 12px; margin-bottom: 12px;">
-                    <img src="${logoSrc}" alt="Del Bono Logo" style="width: 48px; height: 48px; border-radius: 50%; display: block; object-fit: cover;">
+                    <img src="${logoSrc}" alt="Logo" style="width: 48px; height: 48px; border-radius: 50%; display: block; object-fit: cover;">
                   </div>
                   <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">${settings.business_name}</h1>
                   <p style="margin: 4px 0 0 0; color: #fef3c7; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Servicios & Turnos</p>
@@ -206,9 +206,9 @@ async function getBusinessSettings() {
     console.warn('Error fetching business settings:', err);
   }
   return {
-    business_name: 'Tienda de Mascotas Del Bono',
-    address: 'Av. Del Bono 123, San Juan',
-    phone: '+54 264 4567890',
+    business_name: 'Negocio',
+    address: '',
+    phone: '',
     logo_url: ''
   };
 }

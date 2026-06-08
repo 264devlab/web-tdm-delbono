@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   }
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-  const EMAIL_FROM = process.env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <turnos@noreply.264devlab.com.ar>';
+  const EMAIL_FROM = process.env.EMAIL_FROM || 'Notificaciones <turnos@noreply.264devlab.com.ar>';
 
   try {
     let emailFrom = EMAIL_FROM;

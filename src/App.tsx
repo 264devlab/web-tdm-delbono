@@ -83,12 +83,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout, settings, 
             <div className="flex items-center gap-3">
               <img 
                 src={logoUrl} 
-                alt="Del Bono Logo" 
+                alt="Logo" 
                 className={`h-9 w-9 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
               />
               <div className="text-left">
                 <h2 className="text-sm font-extrabold text-offblack m-0">Panel Control</h2>
-                <p className="text-[10px] text-gray-400 font-bold m-0 uppercase">{settings?.business_name || 'Mascotas Del Bono'}</p>
+                <p className="text-[10px] text-gray-400 font-bold m-0 uppercase">{settings?.business_name || 'Negocio'}</p>
               </div>
             </div>
 
@@ -157,7 +157,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout, settings, 
 
           <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200/50 py-1 px-3 rounded-xl">
             <div className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
-            <span className="text-[10px] font-bold text-gray-500">{session?.user?.email || 'admin@delbono.com'}</span>
+            <span className="text-[10px] font-bold text-gray-500">{session?.user?.email || 'admin@example.com'}</span>
           </div>
         </header>
 
@@ -243,7 +243,7 @@ const AdminLogin: React.FC<{ settings: any; settingsLoaded: boolean }> = ({ sett
             <div className="bg-primary/10 text-primary p-3 rounded-xl">
               <img 
                 src={logoUrl} 
-                alt="Del Bono Logo" 
+                alt="Logo" 
                 className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
               />
             </div>
@@ -252,7 +252,7 @@ const AdminLogin: React.FC<{ settings: any; settingsLoaded: boolean }> = ({ sett
             {showForgot ? 'Recuperar Contraseña' : 'Acceso Administrativo'}
           </CardTitle>
           <p className="text-sm text-gray-400 font-semibold">
-            {showForgot ? 'Ingresa tu correo para recibir el enlace' : `Control de ${settings?.business_name || 'Tienda de Mascotas Del Bono'}`}
+            {showForgot ? 'Ingresa tu correo para recibir el enlace' : `Control de ${settings?.business_name || 'Negocio'}`}
           </p>
         </CardHeader>
         <CardContent>
@@ -398,7 +398,7 @@ const ResetPassword: React.FC<{ onComplete: () => void; settings: any; settingsL
             <div className="bg-primary/10 text-primary p-3 rounded-xl">
               <img 
                 src={logoUrl} 
-                alt="Del Bono Logo" 
+                alt="Logo" 
                 className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
               />
             </div>
@@ -475,12 +475,12 @@ const AppContent: React.FC<{
             <div className="flex items-center gap-2.5 text-offblack no-underline">
               <img 
                 src={logoUrl} 
-                alt="Del Bono Logo" 
+                alt="Logo" 
                 className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
               />
               <div className="text-left">
                 <span className="font-extrabold text-base sm:text-lg tracking-tight block">
-                  {settings?.business_name || 'Tienda de Mascotas Del Bono'}
+                  {settings?.business_name || 'Negocio'}
                 </span>
               </div>
             </div>
@@ -519,12 +519,12 @@ const AppContent: React.FC<{
           >
             <img 
               src={logoUrl} 
-              alt="Del Bono Logo" 
+              alt="Logo" 
               className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
             />
             <div className="text-left">
               <span className="font-extrabold text-base sm:text-lg tracking-tight block">
-                {settings?.business_name || 'Tienda de Mascotas Del Bono'}
+                {settings?.business_name || 'Negocio'}
               </span>
             </div>
           </Link>
@@ -562,12 +562,12 @@ const AppContent: React.FC<{
           <div className="flex gap-4 flex-wrap justify-center items-center">
             <span className="flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-gray-400" />
-              {settings?.address || 'Av. Del Bono 123, San Juan'}
+              {settings?.address || ''}
             </span>
             <span>•</span>
             <span className="flex items-center gap-1.5">
               <Phone className="h-3.5 w-3.5 text-gray-400" />
-              {settings?.phone || '+54 264 4567890'}
+              {settings?.phone || ''}
             </span>
             {settings?.instagram && (
               <>
@@ -607,7 +607,7 @@ const AppContent: React.FC<{
 
           {/* Copyright & Dev Lab Credits at the very bottom */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 border-t border-neutral-100/50 w-full pt-4 text-[10px] text-gray-400">
-            <span>© 2026 {settings?.business_name || 'Tienda de Mascotas Del Bono'}. Todos los derechos reservados.</span>
+            <span>© 2026 {settings?.business_name || 'Negocio'}. Todos los derechos reservados.</span>
             <span className="hidden sm:inline">•</span>
             <span>
               Desarrollado por{' '}

@@ -36,7 +36,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGI
   : '*';
 const WA_API_KEY = process.env.WA_API_KEY || null;
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <turnos@noreply.264devlab.com.ar>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Notificaciones <turnos@noreply.264devlab.com.ar>';
 
 // Pino logger silencioso para baileys (evita spam de logs internos)
 const logger = pino({ level: 'silent' });

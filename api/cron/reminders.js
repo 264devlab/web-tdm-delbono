@@ -49,9 +49,9 @@ export default async function handler(req, res) {
     // 4. Retrieve Business Settings for templates
     const { data: settingsData } = await supabase.from('business_settings').select('*').limit(1);
     const settings = (settingsData && settingsData.length > 0) ? settingsData[0] : {
-      business_name: 'Tienda de Mascotas Del Bono',
-      address: 'Av. Del Bono 123, San Juan',
-      phone: '+54 264 4567890',
+      business_name: 'Negocio',
+      address: '',
+      phone: '',
       logo_url: ''
     };
 
@@ -230,7 +230,7 @@ function generateEmailHtml({ clientName, serviceName, date, time, quantity, book
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Recordatorio de Turno - Petshop Del Bono</title>
+      <title>Recordatorio de Turno</title>
     </head>
     <body style="margin: 0; padding: 0; background-color: #fdfbf7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
       <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #fdfbf7; padding: 40px 20px;">
@@ -240,7 +240,7 @@ function generateEmailHtml({ clientName, serviceName, date, time, quantity, book
               <tr>
                 <td style="background-color: #d97706; padding: 30px; text-align: center;">
                   <div style="display: inline-block; background-color: #ffffff; border-radius: 50%; padding: 12px; margin-bottom: 12px;">
-                    <img src="${logoSrc}" alt="Del Bono Logo" style="width: 48px; height: 48px; border-radius: 50%; display: block; object-fit: cover;">
+                    <img src="${logoSrc}" alt="Logo" style="width: 48px; height: 48px; border-radius: 50%; display: block; object-fit: cover;">
                   </div>
                   <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800;">${settings.business_name}</h1>
                 </td>

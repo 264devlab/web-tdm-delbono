@@ -547,8 +547,8 @@ export const BookingStatus: React.FC<{ settings?: any }> = ({ settings }) => {
                       date: booking.booking_date,
                       time: booking.booking_time.substring(0, 5),
                       durationMinutes: booking.services.estimated_duration_minutes,
-                      businessName: settings?.business_name || 'Tienda de Mascotas Del Bono',
-                      address: settings?.address || 'Av. Del Bono 123, San Juan'
+                      businessName: settings?.business_name || 'Negocio',
+                      address: settings?.address || ''
                     })}
                     target="_blank"
                     rel="noreferrer"
@@ -563,8 +563,8 @@ export const BookingStatus: React.FC<{ settings?: any }> = ({ settings }) => {
                       date: booking.booking_date,
                       time: booking.booking_time.substring(0, 5),
                       durationMinutes: booking.services.estimated_duration_minutes,
-                      businessName: settings?.business_name || 'Tienda de Mascotas Del Bono',
-                      address: settings?.address || 'Av. Del Bono 123, San Juan'
+                      businessName: settings?.business_name || 'Negocio',
+                      address: settings?.address || ''
                     })}
                     className="w-full flex items-center justify-center gap-2 py-2.5 text-xs"
                   >
