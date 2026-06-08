@@ -7,7 +7,7 @@ require('dotenv').config();
 
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 const mpClient = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN || 'APP_USR-7836050886019304-060409-f12818c2b9fb599e93e76217b0a2ecca-3450532720'
+  accessToken: process.env.MP_ACCESS_TOKEN || ''
 });
 
 const { createClient } = require('@supabase/supabase-js');
@@ -35,7 +35,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGI
   ? process.env.ALLOWED_ORIGINS.split(',') 
   : '*';
 const WA_API_KEY = process.env.WA_API_KEY || null;
-const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_Yu9J2Bjp_AAZSvJQpUvcKMKSftCEs66p9';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <turnos@noreply.264devlab.com.ar>';
 
 // Pino logger silencioso para baileys (evita spam de logs internos)

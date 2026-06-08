@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
                   const parsed = JSON.parse(body);
                   const { to, subject, html } = parsed;
 
-                  const RESEND_API_KEY = env.RESEND_API_KEY || 're_Yu9J2Bjp_AAZSvJQpUvcKMKSftCEs66p9';
+                  const RESEND_API_KEY = env.RESEND_API_KEY || '';
                   const EMAIL_FROM = env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <turnos@noreply.264devlab.com.ar>';
 
                   console.log(`[Vite Dev Server] Intercepted /api/email/send. Sending via Resend to ${to}...`);
@@ -96,7 +96,7 @@ export default defineConfig(({ mode }) => {
                     depositAmount
                   } = parsed;
 
-                  const MP_ACCESS_TOKEN = env.MP_ACCESS_TOKEN || 'APP_USR-7836050886019304-060409-f12818c2b9fb599e93e76217b0a2ecca-3450532720';
+                  const MP_ACCESS_TOKEN = env.MP_ACCESS_TOKEN || '';
 
                   console.log(`[Vite Dev Server] Intercepted /api/payment/create_preference.`);
 
@@ -197,7 +197,7 @@ export default defineConfig(({ mode }) => {
                   }
 
                   // 2. Fetch preference from Mercado Pago
-                  const MP_ACCESS_TOKEN = env.MP_ACCESS_TOKEN || 'APP_USR-7836050886019304-060409-f12818c2b9fb599e93e76217b0a2ecca-3450532720';
+                  const MP_ACCESS_TOKEN = env.MP_ACCESS_TOKEN || '';
                   // @ts-ignore
                   const { MercadoPagoConfig, Preference } = await import('mercadopago');
                   const mpClient = new MercadoPagoConfig({

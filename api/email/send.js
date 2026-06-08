@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'Faltan parametros obligatorios: to, subject, html.' });
   }
 
-  const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_Yu9J2Bjp_AAZSvJQpUvcKMKSftCEs66p9';
+  const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
   const EMAIL_FROM = process.env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <turnos@noreply.264devlab.com.ar>';
 
   try {

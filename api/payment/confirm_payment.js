@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'Faltan parámetros: preferenceId, paymentId' });
   }
 
-  const token = process.env.MP_ACCESS_TOKEN || 'APP_USR-7836050886019304-060409-f12818c2b9fb599e93e76217b0a2ecca-3450532720';
+  const token = process.env.MP_ACCESS_TOKEN || '';
 
   try {
     // 1. Check if booking already exists with this payment_id

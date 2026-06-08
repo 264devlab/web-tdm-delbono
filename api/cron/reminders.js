@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
     // 5. Send reminders and track updates
     const WA_SERVER_URL = process.env.VITE_WA_SERVER_URL || 'http://localhost:3001';
-    const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_Yu9J2Bjp_AAZSvJQpUvcKMKSftCEs66p9';
+    const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
     const EMAIL_FROM = process.env.EMAIL_FROM || `${settings.business_name} <turnos@noreply.264devlab.com.ar>`;
     const WA_API_KEY = process.env.WA_API_KEY || '';
 
