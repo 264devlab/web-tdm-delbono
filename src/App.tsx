@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate 
 import { supabase } from './utils/supabase';
 import { BookingLanding } from './features/bookings/BookingLanding';
 import { BookingStatus } from './features/bookings/BookingStatus';
+// import { BookingPaymentConfirm } from './features/bookings/BookingPaymentConfirm';
 import { AdminDashboard } from './features/dashboard/AdminDashboard';
 import { AdminCalendar } from './features/calendar/AdminCalendar';
 import { ServicesManager } from './features/services/ServicesManager';
@@ -24,9 +25,12 @@ import {
 interface AdminLayoutProps {
   session: any;
   onLogout: () => void;
+  settings: any;
+  settingsLoaded: boolean;
 }
 
-const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout }) => {
+const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout, settings, settingsLoaded }) => {
+  const logoUrl = settings?.logo_url || '/logo.png';
   // Responsive sidebar open/close state
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 
@@ -77,10 +81,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout }) => {
         <div className="p-5 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Del Bono Logo" className="h-9 w-9 object-contain" />
+              <img 
+                src={logoUrl} 
+                alt="Del Bono Logo" 
+                className={`h-9 w-9 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+              />
               <div className="text-left">
                 <h2 className="text-sm font-extrabold text-offblack m-0">Panel Control</h2>
-                <p className="text-[10px] text-gray-400 font-bold m-0 uppercase">Mascotas Del Bono</p>
+                <p className="text-[10px] text-gray-400 font-bold m-0 uppercase">{settings?.business_name || 'Mascotas Del Bono'}</p>
               </div>
             </div>
 
@@ -173,7 +181,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout }) => {
 // -------------------------------------------------------------
 // ADMIN LOGIN COMPONENT
 // -------------------------------------------------------------
-const AdminLogin: React.FC = () => {
+const AdminLogin: React.FC<{ settings: any; settingsLoaded: boolean }> = ({ settings, settingsLoaded }) => {
+  const logoUrl = settings?.logo_url || '/logo.png';
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
@@ -232,14 +241,18 @@ const AdminLogin: React.FC = () => {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
             <div className="bg-primary/10 text-primary p-3 rounded-xl">
-              <img src="/logo.png" alt="Del Bono Logo" className="h-10 w-10 object-contain" />
+              <img 
+                src={logoUrl} 
+                alt="Del Bono Logo" 
+                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+              />
             </div>
           </div>
           <CardTitle className="text-2xl mt-2 text-offblack">
             {showForgot ? 'Recuperar Contraseña' : 'Acceso Administrativo'}
           </CardTitle>
           <p className="text-sm text-gray-400 font-semibold">
-            {showForgot ? 'Ingresa tu correo para recibir el enlace' : 'Control de Tienda de Mascotas Del Bono'}
+            {showForgot ? 'Ingresa tu correo para recibir el enlace' : `Control de ${settings?.business_name || 'Tienda de Mascotas Del Bono'}`}
           </p>
         </CardHeader>
         <CardContent>
@@ -335,7 +348,8 @@ const AdminLogin: React.FC = () => {
 // -------------------------------------------------------------
 // RESET PASSWORD COMPONENT (DURING RECOVERY)
 // -------------------------------------------------------------
-const ResetPassword: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+const ResetPassword: React.FC<{ onComplete: () => void; settings: any; settingsLoaded: boolean }> = ({ onComplete, settings, settingsLoaded }) => {
+  const logoUrl = settings?.logo_url || '/logo.png';
   const [newPassword, setNewPassword] = useState<string>('');
   const [repeatPassword, setRepeatPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -382,7 +396,11 @@ const ResetPassword: React.FC<{ onComplete: () => void }> = ({ onComplete }) => 
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
             <div className="bg-primary/10 text-primary p-3 rounded-xl">
-              <img src="/logo.png" alt="Del Bono Logo" className="h-10 w-10 object-contain" />
+              <img 
+                src={logoUrl} 
+                alt="Del Bono Logo" 
+                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+              />
             </div>
           </div>
           <CardTitle className="text-2xl mt-2 text-offblack">Restablecer Contraseña</CardTitle>
@@ -439,9 +457,11 @@ const AppContent: React.FC<{
   setIsResettingPassword: (val: boolean) => void;
   checkingAuth: boolean;
   settings: any;
-}> = ({ session, onLogout, isResettingPassword, setIsResettingPassword, checkingAuth, settings }) => {
+  settingsLoaded: boolean;
+}> = ({ session, onLogout, isResettingPassword, setIsResettingPassword, checkingAuth, settings, settingsLoaded }) => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const logoUrl = settings?.logo_url || '/logo.png';
 
   if (checkingAuth) {
     return <div className="text-center py-20 font-bold text-lg text-gray-500">Verificando sesión...</div>;
@@ -453,7 +473,11 @@ const AppContent: React.FC<{
         <header className="bg-white/80 backdrop-blur-md border-b border-neutral-100 sticky top-0 z-[100] py-4 px-6 shadow-sm shadow-amber-950/[0.01]">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2.5 text-offblack no-underline">
-              <img src="/logo.png" alt="Del Bono Logo" className="h-10 w-10 object-contain" />
+              <img 
+                src={logoUrl} 
+                alt="Del Bono Logo" 
+                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+              />
               <div className="text-left">
                 <span className="font-extrabold text-base sm:text-lg tracking-tight block">
                   {settings?.business_name || 'Tienda de Mascotas Del Bono'}
@@ -463,7 +487,7 @@ const AppContent: React.FC<{
           </div>
         </header>
         <main className="flex-1 w-full max-w-6xl mx-auto py-8 px-6">
-          <ResetPassword onComplete={() => {
+          <ResetPassword settings={settings} settingsLoaded={settingsLoaded} onComplete={() => {
             setIsResettingPassword(false);
             window.location.hash = ''; // Clear hash fragment
             window.location.pathname = '/login'; // Redirect to login page
@@ -476,7 +500,7 @@ const AppContent: React.FC<{
   // If visiting admin panel path, bypass client containers
   if (isAdminRoute) {
     return session ? (
-      <AdminLayout session={session} onLogout={onLogout} />
+      <AdminLayout session={session} onLogout={onLogout} settings={settings} settingsLoaded={settingsLoaded} />
     ) : (
       <Navigate to="/login" replace />
     );
@@ -493,7 +517,11 @@ const AppContent: React.FC<{
             onClick={() => window.dispatchEvent(new Event('reset_booking_flow'))}
             className="flex items-center gap-2.5 text-offblack no-underline"
           >
-            <img src="/logo.png" alt="Del Bono Logo" className="h-10 w-10 object-contain" />
+            <img 
+              src={logoUrl} 
+              alt="Del Bono Logo" 
+              className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+            />
             <div className="text-left">
               <span className="font-extrabold text-base sm:text-lg tracking-tight block">
                 {settings?.business_name || 'Tienda de Mascotas Del Bono'}
@@ -518,9 +546,10 @@ const AppContent: React.FC<{
         <Routes>
           <Route path="/" element={<BookingLanding settings={settings} />} />
           <Route path="/turno/:id" element={<BookingStatus settings={settings} />} />
+          {/* <Route path="/pago/confirmacion" element={<BookingPaymentConfirm />} /> */}
           <Route
             path="/login"
-            element={session ? <Navigate to="/admin" replace /> : <AdminLogin />}
+            element={session ? <Navigate to="/admin" replace /> : <AdminLogin settings={settings} settingsLoaded={settingsLoaded} />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -605,7 +634,15 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
   const [isResettingPassword, setIsResettingPassword] = useState<boolean>(false);
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(() => {
+    try {
+      const cached = localStorage.getItem('tdm_delbono_settings');
+      return cached ? JSON.parse(cached) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+  const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     // Check initial session
@@ -615,11 +652,22 @@ export default function App() {
     });
 
     // Load business settings
-    supabase.from('business_settings').select('*').then(({ data }: any) => {
-      if (data && data.length > 0) {
-        setSettings(data[0]);
+    async function loadSettings() {
+      try {
+        const { data } = await supabase.from('business_settings').select('*');
+        if (data && data.length > 0) {
+          setSettings(data[0]);
+          try {
+            localStorage.setItem('tdm_delbono_settings', JSON.stringify(data[0]));
+          } catch (_) {}
+        }
+      } catch (err) {
+        console.warn('Error loading settings:', err);
+      } finally {
+        setSettingsLoaded(true);
       }
-    });
+    }
+    loadSettings();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
@@ -629,8 +677,22 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    const handleSettingsUpdate = (e: CustomEvent) => {
+      setSettings(e.detail);
+    };
+    window.addEventListener('settings_updated', handleSettingsUpdate as any);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('settings_updated', handleSettingsUpdate as any);
+    };
   }, []);
+
+  useEffect(() => {
+    if (settings?.business_name) {
+      document.title = settings.business_name;
+    }
+  }, [settings]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -646,6 +708,7 @@ export default function App() {
         setIsResettingPassword={setIsResettingPassword}
         checkingAuth={checkingAuth}
         settings={settings}
+        settingsLoaded={settingsLoaded}
       />
     </BrowserRouter>
   );

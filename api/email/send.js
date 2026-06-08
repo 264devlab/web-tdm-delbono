@@ -1,3 +1,9 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 export default async function handler(req, res) {
   // Configuración de CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -35,6 +41,16 @@ export default async function handler(req, res) {
   const EMAIL_FROM = process.env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <turnos@noreply.264devlab.com.ar>';
 
   try {
+    let emailFrom = EMAIL_FROM;
+    try {
+      const { data: settings } = await supabase.from('business_settings').select('business_name').limit(1);
+      if (settings && settings.length > 0 && settings[0].business_name) {
+        emailFrom = `${settings[0].business_name} <turnos@noreply.264devlab.com.ar>`;
+      }
+    } catch (dbErr) {
+      console.warn('[Vercel Email] Could not load business name for EMAIL_FROM:', dbErr.message);
+    }
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -42,7 +58,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: EMAIL_FROM,
+        from: emailFrom,
         to: [to],
         subject: subject,
         html: html

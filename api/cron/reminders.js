@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     // 5. Send reminders and track updates
     const WA_SERVER_URL = process.env.VITE_WA_SERVER_URL || 'http://localhost:3001';
     const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_Yu9J2Bjp_AAZSvJQpUvcKMKSftCEs66p9';
-    const EMAIL_FROM = process.env.EMAIL_FROM || 'Tienda de Mascotas Del Bono <turnos@noreply.264devlab.com.ar>';
+    const EMAIL_FROM = process.env.EMAIL_FROM || `${settings.business_name} <turnos@noreply.264devlab.com.ar>`;
     const WA_API_KEY = process.env.WA_API_KEY || '';
 
     const results = [];
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
             body: JSON.stringify({
               from: EMAIL_FROM,
               to: [email],
-              subject: `Recordatorio de Turno - Petshop Del Bono`,
+              subject: `Recordatorio de Turno - ${settings.business_name}`,
               html: emailHtml
             })
           });
@@ -218,7 +218,11 @@ function generateEmailHtml({ clientName, serviceName, date, time, quantity, book
 
   let logoSrc = settings.logo_url;
   if (!logoSrc) {
-    logoSrc = 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=120&h=120';
+    logoSrc = origin + '/logo.png';
+  } else {
+    if (logoSrc.startsWith('/')) {
+      logoSrc = origin + logoSrc;
+    }
   }
 
   return `

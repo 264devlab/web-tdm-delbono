@@ -33,15 +33,16 @@ export function generateICS(payload: CalendarEventPayload): string {
   const dtStart = formatICSDate(startDate);
   const dtEnd = formatICSDate(endDate);
   
-  const uid = `booking-${Date.now()}-${Math.random().toString(36).substring(2, 9)}@tdmdelbono.com`;
-  const summary = `Turno: ${payload.serviceName} - Petshop Del Bono`;
-  const description = `Turno reservado para el servicio de ${payload.serviceName} en Tienda de Mascotas Del Bono. Duración estimada: ${payload.durationMinutes} minutos.`;
+  const domain = payload.businessName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'petshop';
+  const uid = `booking-${Date.now()}-${Math.random().toString(36).substring(2, 9)}@${domain}.com`;
+  const summary = `Turno: ${payload.serviceName} - ${payload.businessName}`;
+  const description = `Turno reservado para el servicio de ${payload.serviceName} en ${payload.businessName}. Duración estimada: ${payload.durationMinutes} minutos.`;
   const location = payload.address;
 
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Del Bono//Petshop Booking System//ES',
+    `PRODID:-//${payload.businessName}//Petshop Booking System//ES`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
@@ -90,8 +91,8 @@ export function getGoogleCalendarUrl(payload: CalendarEventPayload): string {
   };
   
   const dates = `${formatGoogleDate(startDate)}/${formatGoogleDate(endDate)}`;
-  const text = encodeURIComponent(`Turno: ${payload.serviceName} - Petshop Del Bono`);
-  const details = encodeURIComponent(`Turno reservado en Tienda de Mascotas Del Bono. Duración estimada: ${payload.durationMinutes} minutos.`);
+  const text = encodeURIComponent(`Turno: ${payload.serviceName} - ${payload.businessName}`);
+  const details = encodeURIComponent(`Turno reservado en ${payload.businessName}. Duración estimada: ${payload.durationMinutes} minutos.`);
   const location = encodeURIComponent(payload.address);
   
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;

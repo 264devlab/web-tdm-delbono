@@ -61,6 +61,10 @@ export const SettingsManager: React.FC = () => {
   const [facebook, setFacebook] = useState<string>('');
   const [instagram, setInstagram] = useState<string>('');
   const [logoUrl, setLogoUrl] = useState<string>('');
+  const [logoFileBase64, setLogoFileBase64] = useState<string>('');
+  const [logoFileName, setLogoFileName] = useState<string>('');
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [uploadingLogo, setUploadingLogo] = useState<boolean>(false);
 
   // Password fields
   const [newPassword, setNewPassword] = useState<string>('');
@@ -82,8 +86,6 @@ export const SettingsManager: React.FC = () => {
   const [savingSettings, setSavingSettings] = useState<boolean>(false);
   const [savingBlock, setSavingBlock] = useState<boolean>(false);
 
-
-
   // Load data
   const loadData = async () => {
     setLoading(true);
@@ -100,6 +102,13 @@ export const SettingsManager: React.FC = () => {
         setFacebook(s.facebook || '');
         setInstagram(s.instagram || '');
         setLogoUrl(s.logo_url || '');
+        setLogoPreview(s.logo_url || '/logo.png');
+
+        // Update local storage and dispatch event to keep layout updated in real time
+        try {
+          localStorage.setItem('tdm_delbono_settings', JSON.stringify(s));
+          window.dispatchEvent(new CustomEvent('settings_updated', { detail: s }));
+        } catch (_) {}
       }
 
       const { data: blocksData } = await supabase.from('holidays_blocks').select('*');
@@ -117,10 +126,68 @@ export const SettingsManager: React.FC = () => {
     loadData();
   }, []);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('El archivo es demasiado grande. El límite es de 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoFileBase64(reader.result as string);
+        setLogoFileName(file.name);
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Save Settings
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingSettings(true);
+
+    let finalLogoUrl = logoUrl;
+
+    if (logoFileBase64) {
+      setUploadingLogo(true);
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const waApiKey = import.meta.env.VITE_WA_API_KEY;
+        if (waApiKey) {
+          headers['x-api-key'] = waApiKey;
+        }
+
+        const res = await fetch('/api/settings/upload-logo', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ base64: logoFileBase64, fileName: logoFileName }),
+        });
+        const data = await res.json();
+        if (data.success && data.logoUrl) {
+          finalLogoUrl = data.logoUrl;
+          setLogoUrl(data.logoUrl);
+          setLogoFileBase64('');
+        } else {
+          throw new Error(data.error || 'No se pudo subir la imagen.');
+        }
+      } catch (err: any) {
+        console.error('Error uploading logo:', err);
+        showConfirm({
+          title: 'Error de Logotipo',
+          message: `Ocurrió un error al subir el logotipo: ${err.message}`,
+          confirmText: 'Entendido',
+          variant: 'danger',
+          showCancel: false,
+          onConfirm: () => {}
+        });
+        setUploadingLogo(false);
+        setSavingSettings(false);
+        return;
+      }
+      setUploadingLogo(false);
+    }
     
     const payload = {
       business_name: businessName,
@@ -130,7 +197,7 @@ export const SettingsManager: React.FC = () => {
       whatsapp,
       facebook: facebook || null,
       instagram: instagram || null,
-      logo_url: logoUrl || null,
+      logo_url: finalLogoUrl || null,
       updated_at: new Date().toISOString()
     };
 
@@ -347,13 +414,37 @@ export const SettingsManager: React.FC = () => {
                     onChange={(e) => setEmail(e.target.value)}
                   />
 
-                  <Input
-                    label="URL del Logotipo (Imagen Pública para Correos)"
-                    type="url"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    placeholder="https://ejemplo.com/logo.png"
-                  />
+                  <div className="space-y-2 text-left">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Logotipo del Negocio</label>
+                    <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border border-neutral-100 rounded-2xl bg-neutral-50/50">
+                      <div className="relative w-16 h-16 rounded-xl border border-neutral-200 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                        <img src={logoPreview || '/logo.png'} alt="Logo Preview" className="w-full h-full object-contain" />
+                      </div>
+                      <div className="space-y-2 flex-1 text-center sm:text-left">
+                        <p className="text-[11px] text-gray-400 font-semibold m-0">Sube una imagen cuadrada (PNG, JPG) de hasta 2MB.</p>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                          <label className="cursor-pointer bg-primary hover:bg-amber-600 text-white text-xs font-bold py-2 px-3.5 rounded-lg transition-colors inline-block m-0">
+                            {uploadingLogo ? 'Subiendo...' : 'Seleccionar Logo'}
+                            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={uploadingLogo} />
+                          </label>
+                          {logoUrl && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => {
+                                setLogoUrl('');
+                                setLogoPreview('/logo.png');
+                                setLogoFileBase64('');
+                              }}
+                              className="text-xs py-2 px-3 border border-danger/25 text-danger hover:bg-danger/5 hover:border-danger rounded-lg h-auto"
+                            >
+                              Restablecer por Defecto
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-neutral-100 pt-4">
                     <Input

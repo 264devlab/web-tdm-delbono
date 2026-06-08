@@ -62,12 +62,12 @@ function logNotification(channel: 'email' | 'whatsapp', type: NotificationType, 
 function generateEmailHtml(type: NotificationType, payload: NotificationPayload, settings: any): string {
   const manageUrl = payload.bookingId ? `${window.location.origin}/turno/${payload.bookingId}` : '';
 
-  let logoSrc = settings.logo_url;
+  let logoSrc = settings?.logo_url;
   if (!logoSrc) {
-    if (window.location.origin.includes('localhost')) {
-      logoSrc = 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=120&h=120';
-    } else {
-      logoSrc = window.location.origin + '/logo.png';
+    logoSrc = window.location.origin + '/logo.png';
+  } else {
+    if (logoSrc.startsWith('/')) {
+      logoSrc = window.location.origin + logoSrc;
     }
   }
 
@@ -221,24 +221,24 @@ export class EmailProvider implements NotificationProvider {
     const email = payload.toEmail;
     if (!email) return false;
 
+    const settings = await getBusinessSettings();
     let subject = '';
 
     switch (type) {
       case 'CONFIRMATION':
-        subject = `Confirmación de Turno - Petshop Del Bono`;
+        subject = `Confirmación de Turno - ${settings.business_name}`;
         break;
       case 'RESCHEDULE':
-        subject = `Reprogramación de Turno - Petshop Del Bono`;
+        subject = `Reprogramación de Turno - ${settings.business_name}`;
         break;
       case 'CANCELLATION':
-        subject = `Cancelación de Turno - Petshop Del Bono`;
+        subject = `Cancelación de Turno - ${settings.business_name}`;
         break;
       case 'REMINDER':
-        subject = `Recordatorio de Turno - Petshop Del Bono`;
+        subject = `Recordatorio de Turno - ${settings.business_name}`;
         break;
     }
 
-    const settings = await getBusinessSettings();
     const emailHtml = generateEmailHtml(type, payload, settings);
 
     // Guardar logs locales para simulaciones
