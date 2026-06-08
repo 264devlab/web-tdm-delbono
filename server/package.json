@@ -9,6 +9,7 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
     "@whiskeysockets/baileys": "^6.7.18",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",

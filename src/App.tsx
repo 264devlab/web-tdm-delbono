@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate 
 import { supabase } from './utils/supabase';
 import { BookingLanding } from './features/bookings/BookingLanding';
 import { BookingStatus } from './features/bookings/BookingStatus';
-// import { BookingPaymentConfirm } from './features/bookings/BookingPaymentConfirm';
+import { BookingPaymentConfirm } from './features/bookings/BookingPaymentConfirm';
 import { AdminDashboard } from './features/dashboard/AdminDashboard';
 import { AdminCalendar } from './features/calendar/AdminCalendar';
 import { ServicesManager } from './features/services/ServicesManager';
@@ -546,7 +546,7 @@ const AppContent: React.FC<{
         <Routes>
           <Route path="/" element={<BookingLanding settings={settings} />} />
           <Route path="/turno/:id" element={<BookingStatus settings={settings} />} />
-          {/* <Route path="/pago/confirmacion" element={<BookingPaymentConfirm />} /> */}
+          <Route path="/pago/confirmacion" element={<BookingPaymentConfirm />} />
           <Route
             path="/login"
             element={session ? <Navigate to="/admin" replace /> : <AdminLogin settings={settings} settingsLoaded={settingsLoaded} />}

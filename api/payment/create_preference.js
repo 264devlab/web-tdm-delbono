@@ -27,10 +27,25 @@ export default async function handler(req, res) {
     }
   }
 
-  const { title, price, quantity, bookingId } = req.body || {};
+  const {
+    title,
+    price,
+    quantity,
+    bookingId,
+    clientEmail,
+    clientFirstName,
+    clientLastName,
+    clientPhone,
+    serviceId,
+    bookingDate,
+    bookingTime,
+    bookingQuantity,
+    servicePrice,
+    depositAmount
+  } = req.body || {};
 
-  if (!title || !price || !quantity || !bookingId) {
-    return res.status(400).json({ success: false, error: 'Faltan parámetros obligatorios: title, price, quantity, bookingId.' });
+  if (!bookingId && (!clientEmail || !clientFirstName || !clientLastName || !clientPhone || !serviceId || !bookingDate || !bookingTime || !bookingQuantity)) {
+    return res.status(400).json({ success: false, error: 'Faltan parámetros obligatorios para la creación de preferencia.' });
   }
 
   const token = process.env.MP_ACCESS_TOKEN || 'APP_USR-7836050886019304-060409-f12818c2b9fb599e93e76217b0a2ecca-3450532720';
@@ -52,7 +67,7 @@ export default async function handler(req, res) {
     const preferenceBody = {
       items: [
         {
-          id: bookingId,
+          id: bookingId || serviceId,
           title: title,
           quantity: Number(quantity),
           unit_price: Number(price),
@@ -60,11 +75,30 @@ export default async function handler(req, res) {
         }
       ],
       back_urls: {
-        success: `${origin}/turno/${bookingId}?payment_status=success`,
-        failure: `${origin}/turno/${bookingId}?payment_status=failure`,
-        pending: `${origin}/turno/${bookingId}?payment_status=pending`
+        success: bookingId
+          ? `${origin}/turno/${bookingId}?payment_status=success`
+          : `${origin}/pago/confirmacion?payment_status=success`,
+        failure: bookingId
+          ? `${origin}/turno/${bookingId}?payment_status=failure`
+          : `${origin}/pago/confirmacion?payment_status=failure`,
+        pending: bookingId
+          ? `${origin}/turno/${bookingId}?payment_status=pending`
+          : `${origin}/pago/confirmacion?payment_status=pending`
       },
-      external_reference: bookingId
+      external_reference: bookingId || 'draft',
+      metadata: bookingId ? { booking_id: bookingId } : {
+        client_email: clientEmail,
+        client_first_name: clientFirstName,
+        client_last_name: clientLastName,
+        client_phone: clientPhone,
+        service_id: serviceId,
+        service_name: title.replace('Seña - ', ''),
+        service_price: String(servicePrice),
+        deposit_amount: String(depositAmount),
+        booking_date: bookingDate,
+        booking_time: bookingTime,
+        booking_quantity: String(bookingQuantity)
+      }
     };
 
     if (origin.startsWith('https://')) {

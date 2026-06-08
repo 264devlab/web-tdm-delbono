@@ -92,7 +92,6 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
 
   // Payment status
   const [paymentId, setPaymentId] = useState<string>('');
-  const [createdBookingId, setCreatedBookingId] = useState<string>('');
   const [loadingPreference, setLoadingPreference] = useState<boolean>(false);
   const [preferenceError, setPreferenceError] = useState<string>('');
 
@@ -299,7 +298,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
 
       // Check if deposit is required
       if (selectedService?.requires_deposit) {
-        await createPendingBooking(finalClientId);
+        setStep('payment_sim');
       } else {
         // Confirm booking directly
         await confirmBooking(finalClientId, 'direct_no_deposit');
@@ -312,43 +311,8 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
     }
   };
 
-  // Create preliminary booking with status PENDING_PAYMENT
-  const createPendingBooking = async (targetClientId: string) => {
-    if (!selectedService) return;
-
-    try {
-      setLoadingClient(true);
-      const depositAmountTotal = selectedService.deposit_amount * bookingQuantity;
-
-      const { data: newBooking, error } = await supabase.from('bookings').insert({
-        client_id: targetClientId,
-        service_id: selectedService.id,
-        booking_date: bookingDate,
-        booking_time: `${selectedTime}:00`,
-        duration: selectedService.estimated_duration_minutes,
-        deposit_amount: depositAmountTotal,
-        payment_id: null,
-        status: 'PENDING_PAYMENT',
-        notes: `Reserva online pendiente de pago de ${firstName} ${lastName}`,
-        quantity: bookingQuantity
-      }).select();
-
-      if (error) throw error;
-
-      if (newBooking && newBooking.length > 0) {
-        setCreatedBookingId(newBooking[0].id);
-        setStep('payment_sim');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error al reservar el turno preliminar.');
-    } finally {
-      setLoadingClient(false);
-    }
-  };
-
   const handlePayWithMercadoPago = async () => {
-    if (!selectedService || !createdBookingId) return;
+    if (!selectedService) return;
 
     setLoadingPreference(true);
     setPreferenceError('');
@@ -369,7 +333,17 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           title: `Seña - ${selectedService.name}`,
           price: selectedService.deposit_amount,
           quantity: bookingQuantity,
-          bookingId: createdBookingId
+
+          clientEmail: email,
+          clientFirstName: firstName,
+          clientLastName: lastName,
+          clientPhone: phone,
+          serviceId: selectedService.id,
+          bookingDate: bookingDate,
+          bookingTime: selectedTime,
+          bookingQuantity: bookingQuantity,
+          servicePrice: selectedService.price,
+          depositAmount: selectedService.deposit_amount
         })
       });
 
@@ -521,7 +495,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
       {/* Visual Header */}
       <div className="mb-8 border-b border-neutral-100 pb-6">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-offblack m-0">Reserva de Turnos</h1>
-        <p className="text-gray-400 mt-1 font-semibold text-sm">Tienda de Mascotas Del Bono</p>
+        <p className="text-gray-400 mt-1 font-semibold text-sm">{settings?.business_name || 'Tienda de Mascotas Del Bono'}</p>
       </div>
 
       {/* Progress Tracker - Desktop */}
@@ -1007,7 +981,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
             <div className="bg-blue-50/60 border border-blue-100 p-4 rounded-xl text-xs font-bold text-blue-700 text-left flex gap-3 max-w-lg mx-auto">
               <ShieldCheck className="h-5 w-5 flex-shrink-0 text-blue-600" />
               <div>
-                <span>Tu turno se reservará de manera preliminar durante el proceso de pago. Al acreditarse la seña, el turno quedará automáticamente confirmado y recibirás los detalles en tu correo y WhatsApp.</span>
+                <span>Al acreditarse la seña, el turno quedará automáticamente confirmado y recibirás los detalles en tu correo.</span>
               </div>
             </div>
 
@@ -1026,8 +1000,8 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 onClick={handlePayWithMercadoPago}
                 disabled={loadingPreference}
                 className={`flex items-center justify-center gap-2 px-6 py-2.5 font-extrabold text-sm text-white rounded-xl transition-all shadow-sm focus:outline-none ${loadingPreference
-                    ? 'bg-[#009ee3]/70 cursor-not-allowed pointer-events-none'
-                    : 'bg-[#009ee3] hover:bg-[#008cd0] hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
+                  ? 'bg-[#009ee3]/70 cursor-not-allowed pointer-events-none'
+                  : 'bg-[#009ee3] hover:bg-[#008cd0] hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
                   }`}
               >
                 {loadingPreference ? (
