@@ -60,6 +60,8 @@ export const SettingsManager: React.FC = () => {
   const [whatsapp, setWhatsapp] = useState<string>('');
   const [facebook, setFacebook] = useState<string>('');
   const [instagram, setInstagram] = useState<string>('');
+  const [primaryColor, setPrimaryColor] = useState<string>('#d97706');
+  const [secondaryColor, setSecondaryColor] = useState<string>('#0f766e');
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [logoFileBase64, setLogoFileBase64] = useState<string>('');
   const [logoFileName, setLogoFileName] = useState<string>('');
@@ -101,6 +103,8 @@ export const SettingsManager: React.FC = () => {
         setWhatsapp(s.whatsapp);
         setFacebook(s.facebook || '');
         setInstagram(s.instagram || '');
+        setPrimaryColor(s.primary_color || '#d97706');
+        setSecondaryColor(s.secondary_color || '#0f766e');
         setLogoUrl(s.logo_url || '');
         setLogoPreview(s.logo_url || '/logo.png');
 
@@ -197,6 +201,8 @@ export const SettingsManager: React.FC = () => {
       whatsapp,
       facebook: facebook || null,
       instagram: instagram || null,
+      primary_color: primaryColor,
+      secondary_color: secondaryColor,
       logo_url: finalLogoUrl || null,
       updated_at: new Date().toISOString()
     };
@@ -441,6 +447,49 @@ export const SettingsManager: React.FC = () => {
                               Restablecer por Defecto
                             </Button>
                           )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Colors Section */}
+                  <div className="border-t border-neutral-100 pt-4 space-y-2 text-left">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Colores del Tema</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-semibold text-gray-500">Color Primario (Defecto: Naranja #d97706)</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            className="w-10 h-10 rounded-lg cursor-pointer border border-neutral-200 p-0 overflow-hidden bg-transparent shrink-0"
+                          />
+                          <Input
+                            type="text"
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            placeholder="#d97706"
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-semibold text-gray-500">Color Secundario (Defecto: Verde #0f766e)</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={secondaryColor}
+                            onChange={(e) => setSecondaryColor(e.target.value)}
+                            className="w-10 h-10 rounded-lg cursor-pointer border border-neutral-200 p-0 overflow-hidden bg-transparent shrink-0"
+                          />
+                          <Input
+                            type="text"
+                            value={secondaryColor}
+                            onChange={(e) => setSecondaryColor(e.target.value)}
+                            placeholder="#0f766e"
+                            className="flex-1"
+                          />
                         </div>
                       </div>
                     </div>

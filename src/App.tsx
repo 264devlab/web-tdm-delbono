@@ -692,6 +692,16 @@ export default function App() {
     if (settings?.business_name) {
       document.title = settings.business_name;
     }
+    if (settings?.primary_color) {
+      document.documentElement.style.setProperty('--color-primary', settings.primary_color);
+    } else {
+      document.documentElement.style.removeProperty('--color-primary');
+    }
+    if (settings?.secondary_color) {
+      document.documentElement.style.setProperty('--color-secondary', settings.secondary_color);
+    } else {
+      document.documentElement.style.removeProperty('--color-secondary');
+    }
   }, [settings]);
 
   const handleLogout = async () => {

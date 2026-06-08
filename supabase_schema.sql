@@ -12,6 +12,8 @@ create table if not exists public.business_settings (
     id uuid primary key default gen_random_uuid(),
     business_name text not null default 'Tienda de Mascotas Del Bono',
     logo_url text,
+    primary_color text not null default '#d97706',
+    secondary_color text not null default '#0f766e',
     address text not null default 'Av. Del Bono 123, San Juan',
     phone text not null default '+54 264 4567890',
     email text not null default 'contacto@tdmdelbono.com',
@@ -91,7 +93,7 @@ create table if not exists public.holidays_blocks (
 -- 7. Bookings
 create table if not exists public.bookings (
     id uuid primary key default gen_random_uuid(),
-    client_id uuid references public.clients(id) on delete restrict not null,
+    client_id uuid references public.clients(id) on delete cascade not null,
     service_id uuid references public.services(id) on delete restrict not null,
     booking_date date not null,
     booking_time time not null,
@@ -183,8 +185,8 @@ create policy "Allow admin full access to bookings"
 -- -------------------------------------------------------------
 
 -- Seed default Business Settings
-insert into public.business_settings (business_name, address, phone, email, whatsapp, instagram)
-values ('Tienda de Mascotas Del Bono', 'Av. Del Bono 123, San Juan', '+54 264 4567890', 'contacto@tdmdelbono.com', '+54 264 4567890', '@tdmdelbono')
+insert into public.business_settings (business_name, primary_color, secondary_color, address, phone, email, whatsapp, instagram)
+values ('Tienda de Mascotas Del Bono', '#d97706', '#0f766e', 'Av. Del Bono 123, San Juan', '+54 264 4567890', 'contacto@tdmdelbono.com', '+54 264 4567890', '@tdmdelbono')
 on conflict do nothing;
 
 -- Seed categories

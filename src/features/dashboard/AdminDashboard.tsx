@@ -56,6 +56,12 @@ interface BookingWithClientAndService {
     name: string;
     price?: number;
   };
+  clientReputation?: {
+    total: number;
+    noShows: number;
+    rate: number;
+    isConflictive: boolean;
+  };
 }
 
 export const AdminDashboard: React.FC = () => {
@@ -223,9 +229,27 @@ export const AdminDashboard: React.FC = () => {
         setTopClients(sortedClients);
         setPeakHours(sortedHours);
 
+        // Helper to calculate reputation for a client id
+        const getReputation = (clientId: string) => {
+          const clientBookings = bookings.filter((allB: any) => allB.client_id === clientId);
+          const total = clientBookings.length;
+          const noShows = clientBookings.filter((allB: any) => allB.status === 'NO_SHOW').length;
+          const rate = total > 0 ? (noShows / total) : 0;
+          return {
+            total,
+            noShows,
+            rate,
+            isConflictive: total >= 2 && rate >= 0.3
+          };
+        };
+
         // Filter upcoming bookings (today and onwards, sorted, not cancelled)
         const sortedUpcoming = (bookings as any[])
           .filter((b: any) => b.booking_date >= localDateStr && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && b.status !== 'NO_SHOW')
+          .map((b: any) => ({
+            ...b,
+            clientReputation: getReputation(b.client_id)
+          }))
           .sort((a: any, b: any) => {
             if (a.booking_date !== b.booking_date) {
               return a.booking_date.localeCompare(b.booking_date);
@@ -243,6 +267,10 @@ export const AdminDashboard: React.FC = () => {
             const isUnresolved = b.status === 'CONFIRMED' || b.status === 'RESCHEDULED';
             return isPast && isUnresolved;
           })
+          .map((b: any) => ({
+            ...b,
+            clientReputation: getReputation(b.client_id)
+          }))
           .sort((a: any, b: any) => {
             if (a.booking_date !== b.booking_date) {
               return a.booking_date.localeCompare(b.booking_date);
@@ -434,8 +462,13 @@ export const AdminDashboard: React.FC = () => {
                     </span>
                   </div>
                   <h4 className="font-bold text-sm text-offblack">{b.services?.name}</h4>
-                  <p className="text-xs text-gray-500 font-medium">
+                  <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 flex-wrap">
                     Cliente: <strong>{b.clients?.first_name} {b.clients?.last_name}</strong> ({b.clients?.phone})
+                    {b.clientReputation?.isConflictive && (
+                      <span className="bg-danger/10 text-danger text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center">
+                        ⚠️ Alerta: {Math.round(b.clientReputation.rate * 100)}% ausencias
+                      </span>
+                    )}
                   </p>
                 </div>
                 
@@ -490,8 +523,13 @@ export const AdminDashboard: React.FC = () => {
                       </span>
                     </div>
                     <h4 className="font-bold text-base text-offblack">{b.services?.name}</h4>
-                    <p className="text-xs text-gray-500 font-medium">
+                    <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 flex-wrap">
                       Cliente: <strong>{b.clients?.first_name} {b.clients?.last_name}</strong> ({b.clients?.phone})
+                      {b.clientReputation?.isConflictive && (
+                        <span className="bg-danger/10 text-danger text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center">
+                          ⚠️ Alerta: {Math.round(b.clientReputation.rate * 100)}% ausencias
+                        </span>
+                      )}
                     </p>
                   </div>
                   {b.deposit_amount > 0 && (

@@ -86,6 +86,32 @@ export const AdminCalendar: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
   const [isManualBookingOpen, setIsManualBookingOpen] = useState<boolean>(false);
+
+  // Client reputation stats in details modal
+  const [clientStats, setClientStats] = useState<{ total: number; noShows: number; rate: number } | null>(null);
+  const [loadingClientStats, setLoadingClientStats] = useState<boolean>(false);
+
+  // Fetch client reputation stats when details modal is opened
+  useEffect(() => {
+    if (selectedBooking && isDetailsOpen) {
+      setLoadingClientStats(true);
+      supabase
+        .from('bookings')
+        .select('status')
+        .eq('client_id', selectedBooking.client_id)
+        .then(({ data, error }) => {
+          if (data && !error) {
+            const total = data.length;
+            const noShows = data.filter((b: any) => b.status === 'NO_SHOW').length;
+            const rate = total > 0 ? (noShows / total) : 0;
+            setClientStats({ total, noShows, rate });
+          }
+          setLoadingClientStats(false);
+        });
+    } else {
+      setClientStats(null);
+    }
+  }, [selectedBooking, isDetailsOpen]);
   
   // Confirmation/Alert Modal states
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -810,6 +836,13 @@ export const AdminCalendar: React.FC = () => {
                 <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><User className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.first_name} {selectedBooking.clients?.last_name}</p>
                 <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><Phone className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.phone}</p>
                 <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><Mail className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.email}</p>
+                {loadingClientStats ? (
+                  <p className="text-[10px] text-gray-400 animate-pulse font-semibold">Calculando reputación...</p>
+                ) : clientStats && clientStats.total >= 2 && clientStats.rate >= 0.3 ? (
+                  <div className="bg-danger/10 border border-danger/20 text-danger p-2.5 rounded-xl text-xs font-bold mt-1">
+                    ⚠️ Alerta Inasistencias: {Math.round(clientStats.rate * 100)}% de ausencias ({clientStats.noShows} de {clientStats.total} turnos)
+                  </div>
+                ) : null}
               </div>
 
               {/* Price Details */}
