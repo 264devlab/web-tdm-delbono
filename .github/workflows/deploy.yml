@@ -26,7 +26,9 @@ jobs:
           if [ -f .vercel/.env.production.local ]; then
             while IFS= read -r line || [ -n "$line" ]; do
               if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then
-                echo "$line" >> $GITHUB_ENV
+                key=$(echo "$line" | cut -d'=' -f1)
+                value=$(echo "$line" | cut -d'=' -f2- | sed -e 's/^"//' -e 's/"$//')
+                echo "${key}=${value}" >> $GITHUB_ENV
               fi
             done < .vercel/.env.production.local
           fi
