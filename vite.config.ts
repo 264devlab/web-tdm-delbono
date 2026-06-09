@@ -96,7 +96,17 @@ export default defineConfig(({ mode }) => {
                     depositAmount
                   } = parsed;
 
-                  const MP_ACCESS_TOKEN = env.MP_ACCESS_TOKEN || '';
+                  const MP_ACCESS_TOKEN = env.MP_ACCESS_TOKEN;
+                  if (!MP_ACCESS_TOKEN) {
+                    console.error('[Vite Dev Server] MP_ACCESS_TOKEN no está configurado en el archivo .env.');
+                    res.statusCode = 500;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({
+                      success: false,
+                      error: 'Mercado Pago Access Token no configurado localmente (MP_ACCESS_TOKEN) en el archivo .env.'
+                    }));
+                    return;
+                  }
 
                   console.log(`[Vite Dev Server] Intercepted /api/payment/create_preference.`);
 
@@ -197,7 +207,17 @@ export default defineConfig(({ mode }) => {
                   }
 
                   // 2. Fetch preference from Mercado Pago
-                  const MP_ACCESS_TOKEN = env.MP_ACCESS_TOKEN || '';
+                  const MP_ACCESS_TOKEN = env.MP_ACCESS_TOKEN;
+                  if (!MP_ACCESS_TOKEN) {
+                    console.error('[Vite Dev Server] MP_ACCESS_TOKEN no está configurado en el archivo .env.');
+                    res.statusCode = 500;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({
+                      success: false,
+                      error: 'Mercado Pago Access Token no configurado localmente (MP_ACCESS_TOKEN) en el archivo .env.'
+                    }));
+                    return;
+                  }
                   // @ts-ignore
                   const { MercadoPagoConfig, Preference } = await import('mercadopago');
                   const mpClient = new MercadoPagoConfig({

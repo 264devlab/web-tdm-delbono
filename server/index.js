@@ -343,6 +343,14 @@ app.post('/api/payment/create_preference', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Unauthorized: API Key no autorizada.' });
   }
 
+  if (!process.env.MP_ACCESS_TOKEN) {
+    console.error('[Mercado Pago] MP_ACCESS_TOKEN no está configurado en las variables de entorno.');
+    return res.status(500).json({
+      success: false,
+      error: 'Mercado Pago Access Token no configurado (MP_ACCESS_TOKEN).'
+    });
+  }
+
   const {
     title,
     price,
@@ -426,6 +434,14 @@ app.post('/api/payment/confirm_payment', async (req, res) => {
   const incomingKey = req.headers['x-api-key'] || req.headers['authorization'];
   if (WA_API_KEY && incomingKey !== WA_API_KEY) {
     return res.status(401).json({ success: false, error: 'Unauthorized: API Key no autorizada.' });
+  }
+
+  if (!process.env.MP_ACCESS_TOKEN) {
+    console.error('[Mercado Pago] MP_ACCESS_TOKEN no está configurado en las variables de entorno.');
+    return res.status(500).json({
+      success: false,
+      error: 'Mercado Pago Access Token no configurado (MP_ACCESS_TOKEN).'
+    });
   }
 
   const { preferenceId, paymentId } = req.body || {};

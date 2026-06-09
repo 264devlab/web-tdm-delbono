@@ -38,7 +38,14 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'Faltan parámetros: preferenceId, paymentId' });
   }
 
-  const token = process.env.MP_ACCESS_TOKEN || '';
+  const token = process.env.MP_ACCESS_TOKEN;
+  if (!token) {
+    console.error('[Vercel Serverless Confirm] MP_ACCESS_TOKEN no está configurado en las variables de entorno de Vercel.');
+    return res.status(500).json({
+      success: false,
+      error: 'Mercado Pago Access Token no configurado en Vercel (MP_ACCESS_TOKEN). Por favor agrégalo en la configuración de tu proyecto en Vercel.'
+    });
+  }
 
   try {
     // 1. Check if booking already exists with this payment_id
