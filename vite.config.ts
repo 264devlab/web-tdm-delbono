@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
                   const { to, subject, html } = parsed;
 
                   const RESEND_API_KEY = env.RESEND_API_KEY || '';
-                  const EMAIL_FROM = env.EMAIL_FROM || 'Notificaciones <turnos@noreply.264devlab.com.ar>';
+                  const EMAIL_FROM = env.EMAIL_FROM || 'Notificaciones <onboarding@resend.dev>';
 
                   console.log(`[Vite Dev Server] Intercepted /api/email/send. Sending via Resend to ${to}...`);
 
@@ -33,7 +33,8 @@ export default defineConfig(({ mode }) => {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${RESEND_API_KEY}`
+                      'Authorization': `Bearer ${RESEND_API_KEY}`,
+                      'User-Agent': 'petshop-delbono/1.0'
                     },
                     body: JSON.stringify({
                       from: EMAIL_FROM,

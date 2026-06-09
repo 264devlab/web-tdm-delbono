@@ -36,7 +36,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGI
   : '*';
 const WA_API_KEY = process.env.WA_API_KEY || null;
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Notificaciones <turnos@noreply.264devlab.com.ar>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Notificaciones <onboarding@resend.dev>';
 
 // Pino logger silencioso para baileys (evita spam de logs internos)
 const logger = pino({ level: 'silent' });
@@ -302,7 +302,9 @@ app.post('/api/email/send', async (req, res) => {
     try {
       const { data: settings } = await supabase.from('business_settings').select('business_name').limit(1);
       if (settings && settings.length > 0 && settings[0].business_name) {
-        emailFrom = `${settings[0].business_name} <turnos@noreply.264devlab.com.ar>`;
+        const emailMatch = EMAIL_FROM.match(/<(.+)>/) || [null, EMAIL_FROM];
+        const actualEmail = (emailMatch[1] || EMAIL_FROM).trim();
+        emailFrom = `${settings[0].business_name} <${actualEmail}>`;
       }
     } catch (e) {
       console.warn('[Email] Error loading business_name for email sender:', e.message);
@@ -312,7 +314,8 @@ app.post('/api/email/send', async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'User-Agent': 'petshop-delbono/1.0'
       },
       body: JSON.stringify({
         from: emailFrom,

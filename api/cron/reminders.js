@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const argTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' });
     const todayInArg = new Date(argTimeStr);
     const tomorrowInArg = new Date(todayInArg.getTime() + 24 * 60 * 60 * 1000);
-    
+
     const year = tomorrowInArg.getFullYear();
     const month = String(tomorrowInArg.getMonth() + 1).padStart(2, '0');
     const day = String(tomorrowInArg.getDate()).padStart(2, '0');
@@ -58,7 +58,14 @@ export default async function handler(req, res) {
     // 5. Send reminders and track updates
     const WA_SERVER_URL = process.env.VITE_WA_SERVER_URL || 'http://localhost:3001';
     const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-    const EMAIL_FROM = process.env.EMAIL_FROM || `${settings.business_name} <turnos@noreply.264devlab.com.ar>`;
+    let EMAIL_FROM = process.env.EMAIL_FROM;
+    if (!EMAIL_FROM) {
+      EMAIL_FROM = `${settings.business_name} <onboarding@resend.dev>`;
+    } else {
+      const emailMatch = EMAIL_FROM.match(/<(.+)>/) || [null, EMAIL_FROM];
+      const actualEmail = (emailMatch[1] || EMAIL_FROM).trim();
+      EMAIL_FROM = `${settings.business_name} <${actualEmail}>`;
+    }
     const WA_API_KEY = process.env.WA_API_KEY || '';
 
     const results = [];
@@ -94,7 +101,8 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${RESEND_API_KEY}`
+              'Authorization': `Bearer ${RESEND_API_KEY}`,
+              'User-Agent': 'petshop-delbono/1.0'
             },
             body: JSON.stringify({
               from: EMAIL_FROM,
@@ -200,7 +208,7 @@ function formatDate(dateStr) {
 
 function generateWhatsAppMessage({ clientName, serviceName, date, time, quantity, settings }) {
   const prefix = `*${settings.business_name}*\n\n`;
-  return prefix + 
+  return prefix +
     `¡Hola *${clientName}*! Te recordamos tu turno para el día de mañana. ⏰\n\n` +
     `📋 *Detalles de tu Turno:*\n` +
     `• *Servicio:* ${serviceName}\n` +

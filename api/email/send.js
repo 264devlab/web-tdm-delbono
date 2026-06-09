@@ -38,14 +38,18 @@ export default async function handler(req, res) {
   }
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-  const EMAIL_FROM = process.env.EMAIL_FROM || 'Notificaciones <turnos@noreply.264devlab.com.ar>';
+  const EMAIL_FROM = process.env.EMAIL_FROM || 'Notificaciones <onboarding@resend.dev>';
 
   try {
     let emailFrom = EMAIL_FROM;
     try {
-      const { data: settings } = await supabase.from('business_settings').select('business_name').limit(1);
-      if (settings && settings.length > 0 && settings[0].business_name) {
-        emailFrom = `${settings[0].business_name} <turnos@noreply.264devlab.com.ar>`;
+      if (supabase) {
+        const { data: settings } = await supabase.from('business_settings').select('business_name').limit(1);
+        if (settings && settings.length > 0 && settings[0].business_name) {
+          const emailMatch = EMAIL_FROM.match(/<(.+)>/) || [null, EMAIL_FROM];
+          const actualEmail = (emailMatch[1] || EMAIL_FROM).trim();
+          emailFrom = `${settings[0].business_name} <${actualEmail}>`;
+        }
       }
     } catch (dbErr) {
       console.warn('[Vercel Email] Could not load business name for EMAIL_FROM:', dbErr.message);
@@ -55,7 +59,8 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'User-Agent': 'petshop-delbono/1.0'
       },
       body: JSON.stringify({
         from: emailFrom,
