@@ -21,17 +21,33 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Clean and Export Vercel Env to GitHub System
+      - name: Clean and Copy Env Variables with Node.js
         run: |
-          # 1. Clean CRLF and quotes, write to temporary file
-          tr -d '\r' < .vercel/.env.production.local | sed -e 's/="/=/g' -e 's/"$//g' > .vercel/env_clean.txt
-          
-          # 2. Read clean file and export to GITHUB_ENV so Vite can access it globally via process.env
-          while IFS= read -r line || [ -n "$line" ]; do
-            if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then
-              echo "$line" >> $GITHUB_ENV
-            fi
-          done < .vercel/env_clean.txt
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          const srcPath = path.join('.vercel', '.env.production.local');
+          if (fs.existsSync(srcPath)) {
+            const content = fs.readFileSync(srcPath, 'utf8');
+            const lines = content.split(/\r?\n/);
+            const cleanLines = lines.map(line => {
+              if (!line.trim() || line.trim().startsWith('#')) return line;
+              const eqIndex = line.indexOf('=');
+              if (eqIndex === -1) return line;
+              const key = line.slice(0, eqIndex).trim();
+              let val = line.slice(eqIndex + 1).trim();
+              if (val.startsWith('\"') && val.endsWith('\"')) val = val.slice(1, -1);
+              if (val.startsWith('\'') && val.endsWith('\'')) val = val.slice(1, -1);
+              return key + '=' + val;
+            });
+            fs.writeFileSync('.env.production', cleanLines.join('\n'), 'utf8');
+            fs.writeFileSync('.env', cleanLines.join('\n'), 'utf8');
+            console.log('Environment variables cleaned and written to root.');
+          } else {
+            console.error('Source env file not found!');
+            process.exit(1);
+          }
+          "
 
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
