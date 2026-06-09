@@ -21,17 +21,8 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Load Vercel Env into GitHub Runner
-        run: |
-          if [ -f .vercel/.env.production.local ]; then
-            while IFS= read -r line || [ -n "$line" ]; do
-              if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then
-                key=$(echo "$line" | cut -d'=' -f1)
-                value=$(echo "$line" | cut -d'=' -f2- | sed -e 's/^"//' -e 's/"$//')
-                echo "${key}=${value}" >> $GITHUB_ENV
-              fi
-            done < .vercel/.env.production.local
-          fi
+      - name: Copy and Clean Env Variables for Vite
+        run: tr -d '\r' < .vercel/.env.production.local | sed -e 's/="/=/g' -e 's/"$//g' > .env.production
 
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
