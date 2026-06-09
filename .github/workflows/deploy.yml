@@ -22,7 +22,29 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Copy and Clean Env Variables for Vite
-        run: tr -d '\r' < .vercel/.env.production.local | sed -e 's/="/=/g' -e 's/"$//g' > .env.production
+        run: |
+          tr -d '\r' < .vercel/.env.production.local | sed -e 's/="/=/g' -e 's/"$//g' > .env.production
+          cp .env.production .env
+          cp .env.production .env.local
+
+      - name: Diagnose Env Files Configuration
+        run: |
+          echo "=== Listing files in .vercel/ ==="
+          ls -la .vercel/ || true
+          echo "=== Reading keys from .vercel/.env.production.local ==="
+          if [ -f .vercel/.env.production.local ]; then
+            cut -d'=' -f1 .vercel/.env.production.local
+          else
+            echo "ERROR: .vercel/.env.production.local not found"
+          fi
+          echo "=== Listing files in project root ==="
+          ls -la || true
+          echo "=== Reading keys from .env.production ==="
+          if [ -f .env.production ]; then
+            cut -d'=' -f1 .env.production
+          else
+            echo "ERROR: .env.production not found"
+          fi
 
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
