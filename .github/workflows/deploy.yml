@@ -32,26 +32,6 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Inspect env file
-        run: |
-          echo "=================="
-          cat .vercel/.env.production.local
-          echo "=================="    
-
-      - name: Show downloaded variable names
-        run: |
-          echo "Variables descargadas desde Vercel:"
-          grep -v '^#' .vercel/.env.production.local | cut -d= -f1
-
-      - name: Export variables to GitHub Actions
-        run: |
-          grep -v '^#' .vercel/.env.production.local | grep -v '^$' >> $GITHUB_ENV
-
-      - name: Verify VITE variables
-        run: |
-          echo "Variables VITE encontradas:"
-          env | grep '^VITE_' || echo "No se encontraron variables VITE"
-
       - name: Create Vite env file
         run: |
           sed -i '/^VITE_/d' .vercel/.env.production.local
@@ -63,9 +43,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Build application
-        run: npm run build
 
       - name: Build Vercel Output
         run: |
