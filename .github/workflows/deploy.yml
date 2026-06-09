@@ -32,6 +32,12 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
+      - name: Inspect env file
+        run: |
+          echo "=================="
+          cat .vercel/.env.production.local
+          echo "=================="    
+
       - name: Show downloaded variable names
         run: |
           echo "Variables descargadas desde Vercel:"
