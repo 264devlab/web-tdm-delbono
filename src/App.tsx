@@ -11,12 +11,14 @@ import { ClientsManager } from './features/clients/ClientsManager';
 import { ReportsManager } from './features/reports/ReportsManager';
 import { SettingsManager } from './features/settings/SettingsManager';
 import { WhatsAppConnectionManager } from './features/settings/WhatsAppConnectionManager';
+import { HelpManager } from './features/help/HelpManager';
 import { Input } from './components/ui/Input';
 import { Button } from './components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from './components/ui/Card';
 import {
   LayoutDashboard, Calendar, Briefcase, Users, BarChart2,
-  Settings, LogOut, X, Menu, MessageCircle, MapPin, Phone
+  Settings, LogOut, X, Menu, MessageCircle, MapPin, Phone,
+  HelpCircle
 } from 'lucide-react';
 
 // -------------------------------------------------------------
@@ -59,6 +61,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout, settings, 
     { path: '/admin/reports', label: 'Reportes', icon: BarChart2 },
     { path: '/admin/whatsapp', label: 'Conexión WhatsApp', icon: MessageCircle },
     { path: '/admin/settings', label: 'Configuración', icon: Settings },
+    { path: '/admin/help', label: 'Ayuda', icon: HelpCircle },
   ];
 
   const activeItem = navItems.find(item => location.pathname === item.path) || navItems[0];
@@ -171,6 +174,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout, settings, 
             <Route path="/admin/reports" element={<ReportsManager />} />
             <Route path="/admin/whatsapp" element={<WhatsAppConnectionManager />} />
             <Route path="/admin/settings" element={<SettingsManager />} />
+            <Route path="/admin/help" element={<HelpManager />} />
           </Routes>
         </main>
       </div>
