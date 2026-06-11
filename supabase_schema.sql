@@ -99,6 +99,7 @@ create table if not exists public.bookings (
     booking_time time not null,
     duration integer not null, -- duration in minutes
     deposit_amount decimal(10, 2) not null default 0.00,
+    local_amount_paid decimal(10, 2) not null default 0.00,
     payment_id text, -- Mercado Pago payment ID
     status text not null default 'PENDING_PAYMENT' check (status in ('PENDING_PAYMENT', 'CONFIRMED', 'CANCELLED', 'RESCHEDULED', 'COMPLETED', 'NO_SHOW')),
     notes text,

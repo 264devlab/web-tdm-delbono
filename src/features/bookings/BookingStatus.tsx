@@ -57,7 +57,7 @@ export const BookingStatus: React.FC<{ settings?: any }> = ({ settings }) => {
           depositAmount: booking.deposit_amount,
           bookingId: booking.id,
           quantity: booking.quantity,
-          remainingAmount: (booking.services.price * booking.quantity) - booking.deposit_amount
+          remainingAmount: booking.services.price === 0 ? undefined : (booking.services.price * booking.quantity) - booking.deposit_amount
         });
 
         await fetchBooking();
@@ -515,23 +515,24 @@ export const BookingStatus: React.FC<{ settings?: any }> = ({ settings }) => {
             <div className="border-t border-neutral-200/50 pt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-xs text-gray-500">
               <div className="flex justify-between font-semibold text-offblack text-sm">
                 <span>Precio Total:</span>
-                <span>${formatCurrency(booking.services.price * (booking.quantity || 1))}</span>
+                <span>{booking.services.price === 0 ? 'Sin definir' : `$${formatCurrency(booking.services.price * (booking.quantity || 1))}`}</span>
               </div>
-              {booking.deposit_amount > 0 ? (
-                <>
-                  <div className="flex justify-between text-success">
-                    <span>Seña Abonada (MP):</span>
-                    <span>-${formatCurrency(booking.deposit_amount)}</span>
-                  </div>
-                  <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-2 mt-1">
-                    <span>Restante a pagar en local:</span>
-                    <span>${formatCurrency((booking.services.price * (booking.quantity || 1)) - booking.deposit_amount)}</span>
-                  </div>
-                </>
-              ) : (
+              {booking.deposit_amount > 0 && (
+                <div className="flex justify-between text-success">
+                  <span>Seña Abonada (MP):</span>
+                  <span>-${formatCurrency(booking.deposit_amount)}</span>
+                </div>
+              )}
+              {booking.services.price > 0 && (
                 <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-2 mt-1">
                   <span>Restante a pagar en local:</span>
-                  <span>${formatCurrency(booking.services.price * (booking.quantity || 1))}</span>
+                  <span>
+                    ${formatCurrency(
+                      booking.deposit_amount > 0
+                        ? (booking.services.price * (booking.quantity || 1)) - booking.deposit_amount
+                        : booking.services.price * (booking.quantity || 1)
+                    )}
+                  </span>
                 </div>
               )}
             </div>

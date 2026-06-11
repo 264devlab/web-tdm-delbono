@@ -76,7 +76,7 @@ export const BookingPaymentConfirm: React.FC = () => {
               depositAmount: depositAmount * quantity,
               bookingId: data.bookingId,
               quantity: quantity,
-              remainingAmount: (servicePrice - depositAmount) * quantity,
+              remainingAmount: servicePrice === 0 ? undefined : (servicePrice - depositAmount) * quantity,
             });
           }
 

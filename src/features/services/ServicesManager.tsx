@@ -379,6 +379,13 @@ export const ServicesManager: React.FC = () => {
     e.preventDefault();
     if (!sName || !sCategoryId) return;
 
+    if (Number(sPrice) !== 0) {
+      if (sRequiresDeposit && Number(sPrice) <= Number(sDepositAmount)) {
+        alert('El precio del servicio debe ser mayor que la seña.');
+        return;
+      }
+    }
+
     const payload = {
       category_id: sCategoryId,
       name: sName,
@@ -596,7 +603,7 @@ export const ServicesManager: React.FC = () => {
                             
                             <div className="text-[11px] font-bold text-gray-500 grid grid-cols-2 gap-y-1.5 pt-3 border-t border-dashed border-neutral-100">
                               <span>Duración: {s.estimated_duration_minutes} min</span>
-                              <span>Precio Total: ${formatCurrency(s.price || 0)}</span>
+                              <span>Precio Total: {s.price === 0 ? 'Sin definir' : `$${formatCurrency(s.price || 0)}`}</span>
                               <span>Capacidad: {s.max_concurrent_bookings} max</span>
                               <span>Seña: {s.requires_deposit ? `$${formatCurrency(s.deposit_amount)}` : 'No requiere'}</span>
                               <span>Reprogramar: {s.allow_reschedule ? `${s.reschedule_limit_hours} hs límite` : 'No permitido'}</span>

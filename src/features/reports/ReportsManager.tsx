@@ -222,9 +222,21 @@ export const ReportsManager: React.FC = () => {
 
     let totalValue = 0;
     if (b.status === 'COMPLETED') {
-      totalValue = Number(b.services?.price || 0) * (b.quantity || 1);
-      const remaining = Math.max(0, totalValue - Number(b.deposit_amount || 0));
-      localRevenue += remaining;
+      const price = Number(b.services?.price || 0);
+      const deposit = Number(b.deposit_amount || 0);
+      const localPaid = Number(b.local_amount_paid || 0);
+      
+      let actualLocalPaid = 0;
+      if (localPaid > 0) {
+        actualLocalPaid = localPaid;
+      } else {
+        // Fallback for legacy completed bookings or bookings with 0 local cash collected
+        if (price > 0) {
+          actualLocalPaid = Math.max(0, (price * (b.quantity || 1)) - deposit);
+        }
+      }
+      localRevenue += actualLocalPaid;
+      totalValue = deposit + actualLocalPaid;
     } else if (b.status === 'CONFIRMED' || b.status === 'RESCHEDULED' || b.status === 'NO_SHOW') {
       totalValue = Number(b.deposit_amount || 0);
     }
@@ -473,8 +485,26 @@ export const ReportsManager: React.FC = () => {
       const qty = Number(b.quantity || 1);
       const totalValue = price * qty;
       const deposit = Number(b.deposit_amount || 0);
-      const remaining = b.status === 'COMPLETED' ? Math.max(0, totalValue - deposit) : 0;
-      const finalRevenue = b.status === 'COMPLETED' ? totalValue : deposit;
+      const localPaid = Number(b.local_amount_paid || 0);
+
+      let remaining = 0;
+      let finalRevenue = deposit;
+
+      if (b.status === 'COMPLETED') {
+        if (localPaid > 0) {
+          remaining = localPaid;
+          finalRevenue = deposit + localPaid;
+        } else {
+          // Legacy fallback
+          if (price > 0) {
+            remaining = Math.max(0, totalValue - deposit);
+            finalRevenue = totalValue;
+          } else {
+            remaining = 0;
+            finalRevenue = deposit;
+          }
+        }
+      }
 
       return [
         b.id,
@@ -482,7 +512,7 @@ export const ReportsManager: React.FC = () => {
         b.clients?.email || 'N/A',
         `${b.clients?.first_name || ''} ${b.clients?.last_name || ''}`,
         b.services?.name || 'N/A',
-        formatCurrency(price),
+        price === 0 ? 'Sin definir' : formatCurrency(price),
         qty,
         formatCurrency(deposit),
         formatCurrency(remaining),

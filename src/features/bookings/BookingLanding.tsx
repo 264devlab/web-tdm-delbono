@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Input } from '../../components/ui/Input';
 import { notifications } from '../../lib/notifications';
 import { downloadICSFile, getGoogleCalendarUrl } from '../../lib/calendar';
-import { Calendar, Clock, CheckCircle2, ShieldCheck, ChevronRight, ChevronLeft, Scissors, User, Mail } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, ShieldCheck, ChevronRight, ChevronLeft, Scissors, User, Mail, Info } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -398,7 +398,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           depositAmount: depositAmountTotal,
           bookingId: newBooking[0].id,
           quantity: bookingQuantity,
-          remainingAmount: (selectedService.price * bookingQuantity) - depositAmountTotal
+          remainingAmount: selectedService.price === 0 ? undefined : (selectedService.price * bookingQuantity) - depositAmountTotal
         });
 
         setStep('success');
@@ -618,7 +618,9 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
 
                       {/* Price info visible on mobile under the title/description */}
                       <div className="flex items-center gap-3 pt-1.5 sm:hidden">
-                        <span className="text-xs font-extrabold text-offblack">${formatCurrency(serv.price)}</span>
+                        <span className="text-xs font-extrabold text-offblack">
+                          {serv.price === 0 ? 'Sin definir' : `$${formatCurrency(serv.price)}`}
+                        </span>
                         {serv.requires_deposit && (
                           <span className="text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-md">
                             Seña: ${formatCurrency(serv.deposit_amount)}
@@ -631,7 +633,9 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                     <div className="hidden sm:flex items-center gap-4 shrink-0">
                       <div className="text-right">
                         <span className="text-[10px] font-bold text-gray-400 block uppercase">Precio Total</span>
-                        <span className="text-sm font-extrabold text-offblack">${formatCurrency(serv.price)}</span>
+                        <span className="text-sm font-extrabold text-offblack">
+                          {serv.price === 0 ? 'Sin definir' : `$${formatCurrency(serv.price)}`}
+                        </span>
                         {serv.requires_deposit && (
                           <span className="text-[9px] font-bold text-primary block mt-0.5">Seña: ${formatCurrency(serv.deposit_amount)}</span>
                         )}
@@ -803,23 +807,24 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
             <div className="border-t border-neutral-100 pt-4 mt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-sm text-left">
               <div className="flex justify-between items-center font-bold text-offblack">
                 <span>Precio del servicio ({bookingQuantity} {bookingQuantity === 1 ? 'turno' : 'turnos'}):</span>
-                <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
+                <span>{selectedService.price === 0 ? 'Sin definir' : `$${formatCurrency(selectedService.price * bookingQuantity)}`}</span>
               </div>
-              {selectedService.requires_deposit ? (
-                <>
-                  <div className="flex justify-between items-center font-bold text-primary">
-                    <span>Monto de Seña (Mercado Pago):</span>
-                    <span>${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
-                  </div>
-                  <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
-                    <span>Restante a pagar en local:</span>
-                    <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
-                  </div>
-                </>
-              ) : (
+              {selectedService.requires_deposit && (
+                <div className="flex justify-between items-center font-bold text-primary">
+                  <span>Monto de Seña (Mercado Pago):</span>
+                  <span>${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
+                </div>
+              )}
+              {selectedService.price > 0 && (
                 <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                   <span>Restante a pagar en local:</span>
-                  <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
+                  <span>
+                    ${formatCurrency(
+                      selectedService.requires_deposit
+                        ? (selectedService.price - selectedService.deposit_amount) * bookingQuantity
+                        : selectedService.price * bookingQuantity
+                    )}
+                  </span>
                 </div>
               )}
             </div>
@@ -904,23 +909,24 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               <div className="border-t border-neutral-100 pt-4 bg-neutral-50/50 p-4 rounded-xl space-y-2 text-sm text-left">
                 <div className="flex justify-between items-center font-bold text-offblack">
                   <span>Precio del servicio ({bookingQuantity} {bookingQuantity === 1 ? 'turno' : 'turnos'}):</span>
-                  <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
+                  <span>{selectedService.price === 0 ? 'Sin definir' : `$${formatCurrency(selectedService.price * bookingQuantity)}`}</span>
                 </div>
-                {selectedService.requires_deposit ? (
-                  <>
-                    <div className="flex justify-between items-center font-bold text-primary">
-                      <span>Monto de Seña (Mercado Pago):</span>
-                      <span>${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
-                    </div>
-                    <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
-                      <span>Restante a pagar en local:</span>
-                      <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
-                    </div>
-                  </>
-                ) : (
+                {selectedService.requires_deposit && (
+                  <div className="flex justify-between items-center font-bold text-primary">
+                    <span>Monto de Seña (Mercado Pago):</span>
+                    <span>${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
+                  </div>
+                )}
+                {selectedService.price > 0 && (
                   <div className="flex justify-between items-center font-extrabold text-success border-t border-dashed border-neutral-200 pt-2 text-base">
                     <span>Restante a pagar en local:</span>
-                    <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
+                    <span>
+                      ${formatCurrency(
+                        selectedService.requires_deposit
+                          ? (selectedService.price - selectedService.deposit_amount) * bookingQuantity
+                          : selectedService.price * bookingQuantity
+                      )}
+                    </span>
                   </div>
                 )}
               </div>
@@ -962,20 +968,29 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 ${formatCurrency(selectedService.deposit_amount * bookingQuantity)}
               </div>
 
-              <div className="bg-neutral-50/50 p-4 rounded-xl border border-neutral-200 text-xs text-left space-y-2 text-gray-500 font-semibold">
-                <div className="flex justify-between border-b border-neutral-200 pb-1.5">
-                  <span>Precio del Servicio:</span>
-                  <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
+              {selectedService.price === 0 ? (
+                <div className="bg-amber-50/60 border border-amber-100 p-4 rounded-xl text-xs font-bold text-amber-700 text-left flex gap-3 max-w-lg mx-auto leading-relaxed">
+                  <Info className="h-5 w-5 flex-shrink-0 text-amber-600" />
+                  <div>
+                    Este servicio tiene un precio <strong>a definir en el local</strong>. Hoy solo abonas la seña de <strong>${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</strong> para reservar tu lugar.
+                  </div>
                 </div>
-                <div className="flex justify-between border-b border-neutral-200 pb-1.5 text-primary">
-                  <span>Seña a abonar:</span>
-                  <span>-${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
+              ) : (
+                <div className="bg-neutral-50/50 p-4 rounded-xl border border-neutral-200 text-xs text-left space-y-2 text-gray-500 font-semibold">
+                  <div className="flex justify-between border-b border-neutral-200 pb-1.5">
+                    <span>Precio del Servicio:</span>
+                    <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-neutral-200 pb-1.5 text-primary">
+                    <span>Seña a abonar:</span>
+                    <span>-${formatCurrency(selectedService.deposit_amount * bookingQuantity)}</span>
+                  </div>
+                  <div className="flex justify-between text-success font-extrabold text-sm">
+                    <span>Restante a pagar en local:</span>
+                    <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-success font-extrabold text-sm">
-                  <span>Restante a pagar en local:</span>
-                  <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="bg-blue-50/60 border border-blue-100 p-4 rounded-xl text-xs font-bold text-blue-700 text-left flex gap-3 max-w-lg mx-auto">
@@ -1067,23 +1082,24 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                 <div className="border-t border-neutral-200/50 pt-2.5 mt-2 space-y-1.5 text-xs text-gray-500">
                   <div className="flex justify-between">
                     <span>Precio Total:</span>
-                    <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
+                    <span>{selectedService.price === 0 ? 'Sin definir' : `$${formatCurrency(selectedService.price * bookingQuantity)}`}</span>
                   </div>
-                  {selectedService.requires_deposit ? (
-                    <>
-                      <div className="flex justify-between text-success">
-                        <span>Seña Abonada (MP):</span>
-                        <span>-${formatCurrency(selectedService.deposit_amount * bookingQuantity)} (Ref: {paymentId})</span>
-                      </div>
-                      <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-1.5">
-                        <span>Restante a pagar en local:</span>
-                        <span>${formatCurrency((selectedService.price - selectedService.deposit_amount) * bookingQuantity)}</span>
-                      </div>
-                    </>
-                  ) : (
+                  {selectedService.requires_deposit && (
+                    <div className="flex justify-between text-success">
+                      <span>Seña Abonada (MP):</span>
+                      <span>-${formatCurrency(selectedService.deposit_amount * bookingQuantity)} (Ref: {paymentId})</span>
+                    </div>
+                  )}
+                  {selectedService.price > 0 && (
                     <div className="flex justify-between text-offblack font-bold text-sm border-t border-dashed border-neutral-200 pt-1.5">
                       <span>Restante a pagar en local:</span>
-                      <span>${formatCurrency(selectedService.price * bookingQuantity)}</span>
+                      <span>
+                        ${formatCurrency(
+                          selectedService.requires_deposit
+                            ? (selectedService.price - selectedService.deposit_amount) * bookingQuantity
+                            : selectedService.price * bookingQuantity
+                        )}
+                      </span>
                     </div>
                   )}
                 </div>

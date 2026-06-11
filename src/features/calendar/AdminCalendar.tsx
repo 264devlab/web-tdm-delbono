@@ -50,6 +50,7 @@ interface Booking {
   booking_time: string;
   duration: number;
   deposit_amount: number;
+  local_amount_paid?: number;
   payment_id: string | null;
   status: 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED' | 'RESCHEDULED' | 'COMPLETED' | 'NO_SHOW';
   notes: string | null;
@@ -87,6 +88,11 @@ export const AdminCalendar: React.FC = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
   const [isManualBookingOpen, setIsManualBookingOpen] = useState<boolean>(false);
 
+  // Collected amount modal states (for price 0 bookings completed)
+  const [isCollectedAmountModalOpen, setIsCollectedAmountModalOpen] = useState<boolean>(false);
+  const [enteredCollectedAmount, setEnteredCollectedAmount] = useState<string>('');
+  const [pendingBookingIdToComplete, setPendingBookingIdToComplete] = useState<string | null>(null);
+
   // Client reputation stats in details modal
   const [clientStats, setClientStats] = useState<{ total: number; noShows: number; rate: number } | null>(null);
   const [loadingClientStats, setLoadingClientStats] = useState<boolean>(false);
@@ -112,7 +118,7 @@ export const AdminCalendar: React.FC = () => {
       setClientStats(null);
     }
   }, [selectedBooking, isDetailsOpen]);
-  
+
   // Confirmation/Alert Modal states
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -126,7 +132,7 @@ export const AdminCalendar: React.FC = () => {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
     showCancel: true
   });
 
@@ -144,7 +150,7 @@ export const AdminCalendar: React.FC = () => {
       ...config
     });
   };
-  
+
   // Rescheduling details
   const [isRescheduling, setIsRescheduling] = useState<boolean>(false);
   const [rescheduleDate, setRescheduleDate] = useState<string>('');
@@ -197,7 +203,7 @@ export const AdminCalendar: React.FC = () => {
     const year = baseDate.getFullYear();
     const month = baseDate.getMonth();
     const firstDay = new Date(year, month, 1);
-    
+
     let startOffset = firstDay.getDay();
     startOffset = startOffset === 0 ? 6 : startOffset - 1;
 
@@ -225,8 +231,8 @@ export const AdminCalendar: React.FC = () => {
         <div className="divide-y divide-neutral-100">
           {CALENDAR_HOURS.map(hour => {
             const hourPrefix = hour.split(':')[0];
-            const hourBookings = bookings.filter(b => 
-              b.booking_date === currentDate && 
+            const hourBookings = bookings.filter(b =>
+              b.booking_date === currentDate &&
               b.booking_time.startsWith(hourPrefix)
             );
 
@@ -235,21 +241,20 @@ export const AdminCalendar: React.FC = () => {
                 <div className="w-20 shrink-0 bg-neutral-50/50 border-r border-neutral-100 p-3 text-xs font-bold text-gray-500 flex items-center justify-center">
                   {hour} hs
                 </div>
-                
+
                 <div className="flex-1 p-3 flex flex-wrap gap-2 items-center">
                   {hourBookings.length === 0 ? (
                     <span className="text-[10px] font-semibold text-gray-300 italic">Sin turnos agendados</span>
                   ) : (
                     hourBookings.map(b => (
-                      <div 
+                      <div
                         key={b.id}
                         onClick={() => {
                           setSelectedBooking(b);
                           setIsDetailsOpen(true);
                         }}
-                        className={`text-xs py-2 px-3 border border-neutral-200 rounded-xl cursor-pointer shadow-xs transition-all hover:scale-[1.02] flex items-center gap-2 max-w-xs ${
-                          b.status === 'CANCELLED' ? 'bg-danger/5 opacity-60' : 'bg-white hover:border-primary/30'
-                        }`}
+                        className={`text-xs py-2 px-3 border border-neutral-200 rounded-xl cursor-pointer shadow-xs transition-all hover:scale-[1.02] flex items-center gap-2 max-w-xs ${b.status === 'CANCELLED' ? 'bg-danger/5 opacity-60' : 'bg-white hover:border-primary/30'
+                          }`}
                       >
                         <span className={`w-2 h-2 rounded-full ${b.status === 'CONFIRMED' ? 'bg-success' : b.status === 'COMPLETED' ? 'bg-secondary' : 'bg-warning'}`} />
                         <div>
@@ -298,11 +303,11 @@ export const AdminCalendar: React.FC = () => {
                   <td className="w-20 bg-neutral-50/50 p-2 text-[10px] font-bold text-gray-500 text-center border-r border-neutral-100 align-middle">
                     {hour} hs
                   </td>
-                  
+
                   {weekDates.map((date, idx) => {
                     const dateStr = date.toISOString().split('T')[0];
-                    const dayBookings = bookings.filter(b => 
-                      b.booking_date === dateStr && 
+                    const dayBookings = bookings.filter(b =>
+                      b.booking_date === dateStr &&
                       b.booking_time.startsWith(hourPrefix)
                     );
 
@@ -310,15 +315,14 @@ export const AdminCalendar: React.FC = () => {
                       <td key={idx} className="p-2 border-r border-neutral-100 last:border-r-0 align-middle min-w-[90px]">
                         <div className="flex flex-col gap-1.5 justify-center">
                           {dayBookings.map(b => (
-                            <div 
+                            <div
                               key={b.id}
                               onClick={() => {
                                 setSelectedBooking(b);
                                 setIsDetailsOpen(true);
                               }}
-                              className={`text-[9px] p-1.5 border border-neutral-200 rounded-lg cursor-pointer transition-all hover:scale-[1.02] flex items-center gap-1 shadow-2xs ${
-                                b.status === 'CANCELLED' ? 'bg-danger/5 opacity-60 line-through' : 'bg-white hover:border-primary/25'
-                              }`}
+                              className={`text-[9px] p-1.5 border border-neutral-200 rounded-lg cursor-pointer transition-all hover:scale-[1.02] flex items-center gap-1 shadow-2xs ${b.status === 'CANCELLED' ? 'bg-danger/5 opacity-60 line-through' : 'bg-white hover:border-primary/25'
+                                }`}
                               title={`${b.services?.name} - ${b.booking_time.substring(0, 5)} hs`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${b.status === 'CONFIRMED' ? 'bg-success' : b.status === 'COMPLETED' ? 'bg-secondary' : 'bg-warning'}`} />
@@ -366,19 +370,18 @@ export const AdminCalendar: React.FC = () => {
             const isFocused = currentDate === dateStr;
 
             return (
-              <div 
+              <div
                 key={idx}
                 onClick={() => {
                   setCurrentDate(dateStr);
                   setView('day');
                 }}
-                className={`min-h-[70px] p-1.5 border rounded-lg cursor-pointer transition-all flex flex-col justify-between ${
-                  isFocused 
-                    ? 'border-primary bg-primary/5 shadow-2xs' 
+                className={`min-h-[70px] p-1.5 border rounded-lg cursor-pointer transition-all flex flex-col justify-between ${isFocused
+                    ? 'border-primary bg-primary/5 shadow-2xs'
                     : isToday
                       ? 'border-secondary/35 bg-secondary/5'
                       : 'border-neutral-200 hover:border-primary/20 bg-white'
-                }`}
+                  }`}
               >
                 <div className="flex justify-between items-center">
                   <span className={`text-[10px] font-extrabold ${isFocused ? 'text-primary' : 'text-gray-400'}`}>
@@ -393,11 +396,10 @@ export const AdminCalendar: React.FC = () => {
 
                 <div className="space-y-1 mt-1 overflow-y-auto max-h-[45px] pr-0.5">
                   {dayBookings.slice(0, 3).map(b => (
-                    <div 
-                      key={b.id} 
-                      className={`text-[8px] px-1 py-0.5 rounded border border-neutral-100 font-bold truncate flex items-center gap-1 ${
-                        b.status === 'CANCELLED' ? 'bg-danger/5 opacity-50 line-through' : 'bg-neutral-50'
-                      }`}
+                    <div
+                      key={b.id}
+                      className={`text-[8px] px-1 py-0.5 rounded border border-neutral-100 font-bold truncate flex items-center gap-1 ${b.status === 'CANCELLED' ? 'bg-danger/5 opacity-50 line-through' : 'bg-neutral-50'
+                        }`}
                       title={`${b.booking_time.substring(0, 5)} - ${b.services?.name}`}
                     >
                       <span className={`w-1 h-1 rounded-full shrink-0 ${b.status === 'CONFIRMED' ? 'bg-success' : b.status === 'COMPLETED' ? 'bg-secondary' : 'bg-warning'}`} />
@@ -435,7 +437,7 @@ export const AdminCalendar: React.FC = () => {
           const day = startOfWeek.getDay();
           const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
           const monday = new Date(startOfWeek.setDate(diff));
-          
+
           const sunday = new Date(monday);
           sunday.setDate(monday.getDate() + 6);
 
@@ -446,10 +448,10 @@ export const AdminCalendar: React.FC = () => {
         } else if (view === 'month') {
           const currentYear = filterDateObj.getFullYear();
           const currentMonth = filterDateObj.getMonth();
-          
+
           const firstDay = new Date(currentYear, currentMonth, 1);
           const lastDay = new Date(currentYear, currentMonth + 1, 0);
-          
+
           const startStr = firstDay.toISOString().split('T')[0];
           const endStr = lastDay.toISOString().split('T')[0];
 
@@ -495,9 +497,9 @@ export const AdminCalendar: React.FC = () => {
   useEffect(() => {
     if (selectedBooking && rescheduleDate) {
       setLoadingReschedSlots(true);
-      getAvailableSlots({ 
-        serviceId: selectedBooking.service_id, 
-        dateStr: rescheduleDate, 
+      getAvailableSlots({
+        serviceId: selectedBooking.service_id,
+        dateStr: rescheduleDate,
         quantity: selectedBooking.quantity || 1,
         excludeBookingId: selectedBooking.id
       })
@@ -542,35 +544,60 @@ export const AdminCalendar: React.FC = () => {
   };
 
   // Status Updater Actions
-  const updateStatus = async (bookingId: string, newStatus: 'CONFIRMED' | 'CANCELLED' | 'RESCHEDULED' | 'COMPLETED' | 'NO_SHOW') => {
+  const updateStatus = async (
+    bookingId: string,
+    newStatus: 'CONFIRMED' | 'CANCELLED' | 'RESCHEDULED' | 'COMPLETED' | 'NO_SHOW',
+    customAmountPaid?: number
+  ) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+
+    const servicePrice = Number(booking.services?.price ?? 0);
+    if (newStatus === 'COMPLETED' && servicePrice === 0 && customAmountPaid === undefined) {
+      setPendingBookingIdToComplete(bookingId);
+      setEnteredCollectedAmount('');
+      setIsCollectedAmountModalOpen(true);
+      return;
+    }
+
     try {
+      let localAmountPaid = 0;
+      if (newStatus === 'COMPLETED') {
+        if (servicePrice === 0) {
+          localAmountPaid = customAmountPaid || 0;
+        } else {
+          localAmountPaid = Math.max(0, (servicePrice * (booking.quantity || 1)) - Number(booking.deposit_amount || 0));
+        }
+      }
+
       const { error } = await supabase
         .from('bookings')
-        .update({ status: newStatus })
+        .update({
+          status: newStatus,
+          local_amount_paid: localAmountPaid
+        })
         .eq('id', bookingId);
 
       if (error) throw error;
 
-      if (selectedBooking) {
-        // Find booking in local state and refresh
-        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
-        
-        // Notify client if cancelled
-        if (newStatus === 'CANCELLED') {
-          notifications.dispatch('CANCELLATION', {
-            toEmail: selectedBooking.clients.email,
-            toPhone: selectedBooking.clients.phone,
-            clientName: `${selectedBooking.clients.first_name} ${selectedBooking.clients.last_name}`,
-            serviceName: selectedBooking.services.name,
-            date: selectedBooking.booking_date,
-            time: selectedBooking.booking_time.substring(0, 5),
-            depositAmount: selectedBooking.deposit_amount
-          });
-        }
-        
-        setIsDetailsOpen(false);
-        setSelectedBooking(null);
+      // Update local state
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus, local_amount_paid: localAmountPaid } : b));
+
+      // Notify client if cancelled
+      if (newStatus === 'CANCELLED') {
+        notifications.dispatch('CANCELLATION', {
+          toEmail: booking.clients.email,
+          toPhone: booking.clients.phone,
+          clientName: `${booking.clients.first_name} ${booking.clients.last_name}`,
+          serviceName: booking.services.name,
+          date: booking.booking_date,
+          time: booking.booking_time.substring(0, 5),
+          depositAmount: booking.deposit_amount
+        });
       }
+
+      setIsDetailsOpen(false);
+      setSelectedBooking(null);
     } catch (err) {
       console.error(err);
       showConfirm({
@@ -579,7 +606,7 @@ export const AdminCalendar: React.FC = () => {
         confirmText: 'Entendido',
         variant: 'danger',
         showCancel: false,
-        onConfirm: () => {}
+        onConfirm: () => { }
       });
     }
   };
@@ -614,9 +641,9 @@ export const AdminCalendar: React.FC = () => {
       });
 
       // Update state
-      setBookings(prev => prev.map(b => b.id === selectedBooking.id ? { 
-        ...b, 
-        booking_date: rescheduleDate, 
+      setBookings(prev => prev.map(b => b.id === selectedBooking.id ? {
+        ...b,
+        booking_date: rescheduleDate,
         booking_time: `${rescheduleTime}:00`,
         status: 'RESCHEDULED'
       } : b));
@@ -632,7 +659,7 @@ export const AdminCalendar: React.FC = () => {
         confirmText: 'Entendido',
         variant: 'danger',
         showCancel: false,
-        onConfirm: () => {}
+        onConfirm: () => { }
       });
     }
   };
@@ -648,7 +675,7 @@ export const AdminCalendar: React.FC = () => {
 
     try {
       let finalClientId = '';
-      
+
       // Get or create client
       if (manualClientExists) {
         // Retrieve and update details if modified
@@ -656,9 +683,9 @@ export const AdminCalendar: React.FC = () => {
         if (existingClients && existingClients.length > 0) {
           finalClientId = existingClients[0].id;
           // Check if any fields changed
-          if (existingClients[0].first_name !== manualFirstName || 
-              existingClients[0].last_name !== manualLastName || 
-              existingClients[0].phone !== manualPhone) {
+          if (existingClients[0].first_name !== manualFirstName ||
+            existingClients[0].last_name !== manualLastName ||
+            existingClients[0].phone !== manualPhone) {
             await supabase.from('clients')
               .update({
                 first_name: manualFirstName,
@@ -675,7 +702,7 @@ export const AdminCalendar: React.FC = () => {
           last_name: manualLastName,
           phone: manualPhone
         }).select();
-        
+
         if (error) throw error;
         if (data && data.length > 0) finalClientId = data[0].id;
       }
@@ -709,7 +736,7 @@ export const AdminCalendar: React.FC = () => {
           depositAmount: 0,
           bookingId: newBooking[0].id,
           quantity: manualQuantity,
-          remainingAmount: (selectedServiceObj.price || 0) * manualQuantity
+          remainingAmount: selectedServiceObj.price === 0 ? undefined : (selectedServiceObj.price || 0) * manualQuantity
         });
 
         // Add to calendar state directly if matches current filters
@@ -753,17 +780,16 @@ export const AdminCalendar: React.FC = () => {
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`py-1.5 px-3.5 text-xs font-bold uppercase rounded-lg cursor-pointer transition-all ${
-                  view === v ? 'bg-primary text-white shadow-sm' : 'bg-transparent text-offblack hover:bg-neutral-200/50'
-                }`}
+                className={`py-1.5 px-3.5 text-xs font-bold uppercase rounded-lg cursor-pointer transition-all ${view === v ? 'bg-primary text-white shadow-sm' : 'bg-transparent text-offblack hover:bg-neutral-200/50'
+                  }`}
               >
                 {v === 'day' ? 'Día' : v === 'week' ? 'Semana' : 'Mes'}
               </button>
             ))}
           </div>
 
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => setIsManualBookingOpen(true)}
             className="flex items-center gap-2 text-sm py-2.5 px-4 rounded-xl"
           >
@@ -782,8 +808,8 @@ export const AdminCalendar: React.FC = () => {
           onChange={(e) => setCurrentDate(e.target.value)}
           className="font-bold border border-neutral-200 px-3 py-1.5 text-sm rounded-lg focus:outline-none focus:border-primary"
         />
-        <Button 
-          variant="secondary" 
+        <Button
+          variant="secondary"
           onClick={() => setCurrentDate(new Date().toISOString().split('T')[0])}
           className="py-1.5 px-3 text-xs rounded-lg"
         >
@@ -821,9 +847,9 @@ export const AdminCalendar: React.FC = () => {
                 <h3 className="text-base font-extrabold border-b border-neutral-200 pb-2 text-offblack">{selectedBooking.services?.name}</h3>
                 <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><CalendarRange className="h-4 w-4 text-primary" /> <strong>Fecha:</strong> {formatDate(selectedBooking.booking_date)}</p>
                 <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Clock className="h-4 w-4 text-primary" /> <strong>Hora:</strong> {selectedBooking.booking_time.substring(0, 5)} hs ({selectedBooking.duration} min)</p>
-                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Scissors className="h-4 w-4 text-primary" /> <strong>Cantidad:</strong> {selectedBooking.quantity || 1} { (selectedBooking.quantity || 1) === 1 ? 'turno' : 'turnos' }</p>
+                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Scissors className="h-4 w-4 text-primary" /> <strong>Cantidad:</strong> {selectedBooking.quantity || 1} {(selectedBooking.quantity || 1) === 1 ? 'turno' : 'turnos'}</p>
                 <p className="text-sm text-gray-600 font-semibold flex items-center gap-2">
-                  <strong>Estado Actual:</strong> 
+                  <strong>Estado Actual:</strong>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(selectedBooking.status)}`}>
                     {translateStatus(selectedBooking.status)}
                   </span>
@@ -849,23 +875,24 @@ export const AdminCalendar: React.FC = () => {
               <div className="space-y-1.5 border-t border-neutral-100 pt-4 text-gray-600 font-semibold text-sm text-left">
                 <div className="flex justify-between">
                   <span>Precio Total:</span>
-                  <span>${formatCurrency(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1))}</span>
+                  <span>{((selectedBooking.services as any)?.price || 0) === 0 ? 'Sin definir' : `$${formatCurrency(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1))}`}</span>
                 </div>
-                {selectedBooking.deposit_amount > 0 ? (
-                  <>
-                    <div className="flex justify-between text-success">
-                      <span>Seña Abonada (MP):</span>
-                      <span>-${formatCurrency(selectedBooking.deposit_amount)}</span>
-                    </div>
-                    <div className="flex justify-between text-offblack font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
-                      <span>Resta pagar en local:</span>
-                      <span>${formatCurrency((((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)) - selectedBooking.deposit_amount)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex justify-between text-success font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
+                {selectedBooking.deposit_amount > 0 && (
+                  <div className="flex justify-between text-success">
+                    <span>Seña Abonada (MP):</span>
+                    <span>-${formatCurrency(selectedBooking.deposit_amount)}</span>
+                  </div>
+                )}
+                {((selectedBooking.services as any)?.price || 0) > 0 && (
+                  <div className="flex justify-between text-offblack font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
                     <span>Resta pagar en local:</span>
-                    <span>${formatCurrency(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1))}</span>
+                    <span>
+                      ${formatCurrency(
+                        selectedBooking.deposit_amount > 0
+                          ? (((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)) - selectedBooking.deposit_amount
+                          : ((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)
+                      )}
+                    </span>
                   </div>
                 )}
               </div>
@@ -878,32 +905,32 @@ export const AdminCalendar: React.FC = () => {
                 <div className="space-y-4">
                   <h4 className="font-extrabold text-xs text-gray-400 border-b border-neutral-100 pb-1.5 uppercase">Acciones Rápidas</h4>
                   <div className="grid grid-cols-2 gap-3">
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       onClick={() => updateStatus(selectedBooking.id, 'COMPLETED')}
                       className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
                       disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
                     >
                       <CheckCircle className="h-4 w-4 text-success" /> Completado
                     </Button>
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       onClick={() => updateStatus(selectedBooking.id, 'NO_SHOW')}
                       className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
                       disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
                     >
                       <XCircle className="h-4 w-4 text-warning" /> No Asistió
                     </Button>
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       onClick={() => setIsRescheduling(true)}
                       className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
                       disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
                     >
                       <RefreshCw className="h-4 w-4 text-secondary" /> Reprogramar
                     </Button>
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       onClick={() => updateStatus(selectedBooking.id, 'CANCELLED')}
                       className="text-xs border-danger/25 text-danger hover:bg-danger/5 hover:border-danger flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer"
                       disabled={selectedBooking.status === 'CANCELLED'}
@@ -917,7 +944,7 @@ export const AdminCalendar: React.FC = () => {
                 <div className="bg-secondary/5 border border-secondary/15 p-4 rounded-xl space-y-4 text-left flex-1 flex flex-col justify-between">
                   <div>
                     <h4 className="font-extrabold text-sm text-secondary border-b border-secondary/10 pb-1.5 mb-3">Reprogramar Turno</h4>
-                    
+
                     <div className="flex flex-col gap-1.5 mb-3">
                       <label className="text-xs font-bold text-offblack">Nueva Fecha:</label>
                       <input
@@ -945,13 +972,12 @@ export const AdminCalendar: React.FC = () => {
                               type="button"
                               disabled={!slot.available}
                               onClick={() => setRescheduleTime(slot.time)}
-                              className={`py-1.5 text-center font-bold border rounded-lg text-xs cursor-pointer ${
-                                !slot.available
+                              className={`py-1.5 text-center font-bold border rounded-lg text-xs cursor-pointer ${!slot.available
                                   ? 'bg-neutral-50 text-gray-300 border-neutral-100 cursor-not-allowed'
                                   : rescheduleTime === slot.time
                                     ? 'bg-primary text-white border-transparent shadow-sm'
                                     : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
-                              }`}
+                                }`}
                             >
                               {slot.time}
                             </button>
@@ -965,9 +991,9 @@ export const AdminCalendar: React.FC = () => {
                     <Button variant="ghost" onClick={() => setIsRescheduling(false)} className="py-1.5 px-3.5 text-xs rounded-lg cursor-pointer">
                       Volver
                     </Button>
-                    <Button 
-                      variant="primary" 
-                      disabled={!rescheduleDate || !rescheduleTime} 
+                    <Button
+                      variant="primary"
+                      disabled={!rescheduleDate || !rescheduleTime}
                       onClick={handleRescheduleSubmit}
                       className="py-1.5 px-3.5 text-xs rounded-lg cursor-pointer"
                     >
@@ -980,9 +1006,9 @@ export const AdminCalendar: React.FC = () => {
               {/* Close Button for Details Modal (shows when not rescheduling) */}
               {!isRescheduling && (
                 <div className="flex justify-end pt-4 border-t border-neutral-100">
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
+                  <Button
+                    type="button"
+                    variant="ghost"
                     onClick={() => {
                       setIsDetailsOpen(false);
                       setSelectedBooking(null);
@@ -1160,6 +1186,78 @@ export const AdminCalendar: React.FC = () => {
             </Button>
             <Button type="submit" variant="primary" className="cursor-pointer">
               Crear Turno
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL PARA SOLICITAR MONTO COBRADO (SERVICIOS SIN PRECIO DEFINIDO) */}
+      <Modal
+        isOpen={isCollectedAmountModalOpen}
+        onClose={() => {
+          setIsCollectedAmountModalOpen(false);
+          setPendingBookingIdToComplete(null);
+        }}
+        title="Registrar Cobro de Turno"
+        size="sm"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (pendingBookingIdToComplete) {
+              const amount = parseInt(enteredCollectedAmount, 10) || 0;
+              updateStatus(pendingBookingIdToComplete, 'COMPLETED', amount);
+              setIsCollectedAmountModalOpen(false);
+              setPendingBookingIdToComplete(null);
+            }
+          }}
+          className="space-y-4 text-left"
+        >
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-gray-600 leading-relaxed">
+              El precio de este servicio está sin definir. Por favor, ingrese el monto cobrado en el local (sin incluir la seña).
+            </p>
+            {pendingBookingIdToComplete && (() => {
+              const pendingBooking = bookings.find(b => b.id === pendingBookingIdToComplete);
+              if (pendingBooking && pendingBooking.deposit_amount > 0) {
+                return (
+                  <div className="bg-amber-50 text-amber-800 border border-amber-100 p-3 rounded-xl text-xs font-semibold">
+                    ⚠️ <strong>Seña ya abonada:</strong> Se han pagado ${formatCurrency(pendingBooking.deposit_amount)} de seña. Ingrese únicamente la **diferencia** cobrada presencialmente (sin contemplar la seña).
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+
+          <div className="flex flex-col gap-1.5 w-full">
+            <label className="text-sm font-bold text-offblack">Monto Cobrado ($)</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={enteredCollectedAmount}
+              onChange={(e) => setEnteredCollectedAmount(e.target.value)}
+              placeholder="Ej. 1500"
+              className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-neutral-100">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setIsCollectedAmountModalOpen(false);
+                setPendingBookingIdToComplete(null);
+              }}
+              className="cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary" className="cursor-pointer">
+              Confirmar y Completar
             </Button>
           </div>
         </form>
