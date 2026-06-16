@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/Input';
 import { notifications } from '../../lib/notifications';
 import { downloadICSFile, getGoogleCalendarUrl } from '../../lib/calendar';
 import { Calendar, Clock, CheckCircle2, ShieldCheck, ChevronRight, ChevronLeft, Scissors, User, Mail, Info } from 'lucide-react';
+import { normalizePhone } from '../../utils/phone';
 
 interface Category {
   id: string;
@@ -215,39 +216,45 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
     };
   }, [selectedService, calendarMonth, calendarYear]);
 
-  // 5. Client Lookup by Email (Triggers onBlur)
-  const handleEmailSearch = async () => {
-    if (!email) {
+  // 5. Client Lookup by Phone (Triggers onBlur)
+  const handlePhoneSearch = async () => {
+    if (!phone) {
       setClientFormError('');
       setFirstName('');
       setLastName('');
-      setPhone('');
+      setEmail('');
       setClientId('');
       setClientExists(false);
       return;
     }
-    if (!email.includes('@')) {
-      setClientFormError('Por favor ingrese un correo electrónico válido');
+    const normalizedPhone = normalizePhone(phone);
+    if (normalizedPhone !== phone) {
+      setPhone(normalizedPhone); // Update input with normalized phone
+    }
+    
+    if (normalizedPhone.length < 10) {
+      setClientFormError('Por favor ingrese un teléfono válido de al menos 10 dígitos.');
       return;
     }
+    
     setClientFormError('');
     setLoadingClient(true);
 
     try {
-      const { data: clients, error } = await supabase.from('clients').select('*').eq('email', email);
+      const { data: clients, error } = await supabase.from('clients').select('*').eq('phone', normalizedPhone);
       if (error) throw error;
 
       if (clients && clients.length > 0) {
         const client = clients[0];
         setFirstName(client.first_name);
         setLastName(client.last_name);
-        setPhone(client.phone);
+        setEmail(client.email);
         setClientId(client.id);
         setClientExists(true);
       } else {
         setFirstName('');
         setLastName('');
-        setPhone('');
+        setEmail('');
         setClientId('');
         setClientExists(false);
       }
@@ -276,17 +283,18 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           .update({
             first_name: firstName,
             last_name: lastName,
-            phone
+            email
           })
           .eq('id', clientId);
         if (error) throw error;
       } else {
         // Create new client
+        const normalizedPhone = normalizePhone(phone);
         const { data: newClient, error } = await supabase.from('clients').insert({
           email,
           first_name: firstName,
           last_name: lastName,
-          phone
+          phone: normalizedPhone
         }).select();
 
         if (error) throw error;
@@ -857,13 +865,12 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
           <CardContent className="space-y-4">
             <form onSubmit={handleClientSubmit} className="space-y-4">
               <Input
-                label="Correo Electrónico"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onBlur={handleEmailSearch}
-                placeholder="ejemplo@correo.com"
-                error={clientFormError}
+                label="Teléfono Móvil (WhatsApp)"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onBlur={handlePhoneSearch}
+                placeholder="Ej: 2644567890 (Sin 0 ni 15)"
                 disabled={loadingClient}
                 required
               />
@@ -896,11 +903,12 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               </div>
 
               <Input
-                label="Teléfono Móvil (WhatsApp)"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="2645012345"
+                label="Correo Electrónico"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ejemplo@correo.com"
+                error={clientFormError}
                 disabled={loadingClient}
                 required
               />

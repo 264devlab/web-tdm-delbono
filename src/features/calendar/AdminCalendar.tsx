@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase';
 import { getAvailableSlots, type BookingSlot } from '../../utils/availability';
-import { formatCurrency, formatDate, formatDateShort } from '../../utils/format';
+import { formatDate, formatDateShort } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { notifications } from '../../lib/notifications';
-import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
-import { Calendar as CalendarIcon, Clock, User, Phone, Mail, CheckCircle, XCircle, RefreshCw, CalendarRange, Plus, Scissors } from 'lucide-react';
+import { Calendar as CalendarIcon, User, CalendarRange, Plus } from 'lucide-react';
+import { BookingDetailsModal } from '../../components/BookingDetailsModal';
+import { normalizePhone } from '../../utils/phone';
 
 const WEEKDAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const MONTHS = [
@@ -19,28 +20,7 @@ const CALENDAR_HOURS = [
   '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
 ];
 
-const translateStatus = (status: string) => {
-  switch (status) {
-    case 'PENDING_PAYMENT': return 'Pendiente Pago';
-    case 'CONFIRMED': return 'Confirmado';
-    case 'CANCELLED': return 'Cancelado';
-    case 'RESCHEDULED': return 'Reprogramado';
-    case 'COMPLETED': return 'Completado';
-    case 'NO_SHOW': return 'Ausente';
-    default: return status;
-  }
-};
 
-const getStatusBadgeClass = (status: string) => {
-  switch (status) {
-    case 'CONFIRMED': return 'bg-success/10 text-success';
-    case 'COMPLETED': return 'bg-secondary/10 text-secondary';
-    case 'PENDING_PAYMENT': return 'bg-amber-100 text-amber-700';
-    case 'CANCELLED': return 'bg-danger/10 text-danger';
-    case 'RESCHEDULED': return 'bg-primary/10 text-primary';
-    default: return 'bg-neutral-100 text-gray-500';
-  }
-};
 
 interface Booking {
   id: string;
@@ -88,75 +68,7 @@ export const AdminCalendar: React.FC = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(false);
   const [isManualBookingOpen, setIsManualBookingOpen] = useState<boolean>(false);
 
-  // Collected amount modal states (for price 0 bookings completed)
-  const [isCollectedAmountModalOpen, setIsCollectedAmountModalOpen] = useState<boolean>(false);
-  const [enteredCollectedAmount, setEnteredCollectedAmount] = useState<string>('');
-  const [pendingBookingIdToComplete, setPendingBookingIdToComplete] = useState<string | null>(null);
-
-  // Client reputation stats in details modal
-  const [clientStats, setClientStats] = useState<{ total: number; noShows: number; rate: number } | null>(null);
-  const [loadingClientStats, setLoadingClientStats] = useState<boolean>(false);
-
-  // Fetch client reputation stats when details modal is opened
-  useEffect(() => {
-    if (selectedBooking && isDetailsOpen) {
-      setLoadingClientStats(true);
-      supabase
-        .from('bookings')
-        .select('status')
-        .eq('client_id', selectedBooking.client_id)
-        .then(({ data, error }) => {
-          if (data && !error) {
-            const total = data.length;
-            const noShows = data.filter((b: any) => b.status === 'NO_SHOW').length;
-            const rate = total > 0 ? (noShows / total) : 0;
-            setClientStats({ total, noShows, rate });
-          }
-          setLoadingClientStats(false);
-        });
-    } else {
-      setClientStats(null);
-    }
-  }, [selectedBooking, isDetailsOpen]);
-
   // Confirmation/Alert Modal states
-  const [confirmConfig, setConfirmConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    confirmText?: string;
-    onConfirm: () => void | Promise<void>;
-    variant?: 'danger' | 'warning' | 'primary';
-    showCancel?: boolean;
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => { },
-    showCancel: true
-  });
-
-  const showConfirm = (config: {
-    title: string;
-    message: string;
-    confirmText?: string;
-    onConfirm: () => void | Promise<void>;
-    variant?: 'danger' | 'warning' | 'primary';
-    showCancel?: boolean;
-  }) => {
-    setConfirmConfig({
-      isOpen: true,
-      showCancel: true,
-      ...config
-    });
-  };
-
-  // Rescheduling details
-  const [isRescheduling, setIsRescheduling] = useState<boolean>(false);
-  const [rescheduleDate, setRescheduleDate] = useState<string>('');
-  const [rescheduleSlots, setRescheduleSlots] = useState<{ time: string; available: boolean }[]>([]);
-  const [rescheduleTime, setRescheduleTime] = useState<string>('');
-  const [loadingReschedSlots, setLoadingReschedSlots] = useState<boolean>(false);
 
   // Manual booking details
   const [services, setServices] = useState<Service[]>([]);
@@ -493,22 +405,7 @@ export const AdminCalendar: React.FC = () => {
       });
   }, []);
 
-  // Fetch rescheduling slots
-  useEffect(() => {
-    if (selectedBooking && rescheduleDate) {
-      setLoadingReschedSlots(true);
-      getAvailableSlots({
-        serviceId: selectedBooking.service_id,
-        dateStr: rescheduleDate,
-        quantity: selectedBooking.quantity || 1,
-        excludeBookingId: selectedBooking.id
-      })
-        .then((slots: BookingSlot[]) => {
-          setRescheduleSlots(slots);
-          setLoadingReschedSlots(false);
-        });
-    }
-  }, [selectedBooking, rescheduleDate]);
+
 
   // Fetch manual booking slots
   useEffect(() => {
@@ -523,19 +420,22 @@ export const AdminCalendar: React.FC = () => {
   }, [manualServiceId, manualDate, manualQuantity]);
 
   // Handle client search for manual booking
-  const handleManualEmailSearch = async () => {
-    if (!manualEmail) return;
+  const handleManualPhoneSearch = async () => {
+    if (!manualPhone) return;
+    const normalizedPhone = normalizePhone(manualPhone);
+    if (normalizedPhone !== manualPhone) setManualPhone(normalizedPhone);
+    
     try {
-      const { data } = await supabase.from('clients').select('*').eq('email', manualEmail);
+      const { data } = await supabase.from('clients').select('*').eq('phone', normalizedPhone);
       if (data && data.length > 0) {
         setManualFirstName(data[0].first_name);
         setManualLastName(data[0].last_name);
-        setManualPhone(data[0].phone);
+        setManualEmail(data[0].email);
         setManualClientExists(true);
       } else {
         setManualFirstName('');
         setManualLastName('');
-        setManualPhone('');
+        setManualEmail('');
         setManualClientExists(false);
       }
     } catch (err) {
@@ -543,126 +443,7 @@ export const AdminCalendar: React.FC = () => {
     }
   };
 
-  // Status Updater Actions
-  const updateStatus = async (
-    bookingId: string,
-    newStatus: 'CONFIRMED' | 'CANCELLED' | 'RESCHEDULED' | 'COMPLETED' | 'NO_SHOW',
-    customAmountPaid?: number
-  ) => {
-    const booking = bookings.find(b => b.id === bookingId);
-    if (!booking) return;
 
-    const servicePrice = Number(booking.services?.price ?? 0);
-    if (newStatus === 'COMPLETED' && servicePrice === 0 && customAmountPaid === undefined) {
-      setPendingBookingIdToComplete(bookingId);
-      setEnteredCollectedAmount('');
-      setIsCollectedAmountModalOpen(true);
-      return;
-    }
-
-    try {
-      let localAmountPaid = 0;
-      if (newStatus === 'COMPLETED') {
-        if (servicePrice === 0) {
-          localAmountPaid = customAmountPaid || 0;
-        } else {
-          localAmountPaid = Math.max(0, (servicePrice * (booking.quantity || 1)) - Number(booking.deposit_amount || 0));
-        }
-      }
-
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          status: newStatus,
-          local_amount_paid: localAmountPaid
-        })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
-      // Update local state
-      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus, local_amount_paid: localAmountPaid } : b));
-
-      // Notify client if cancelled
-      if (newStatus === 'CANCELLED') {
-        notifications.dispatch('CANCELLATION', {
-          toEmail: booking.clients.email,
-          toPhone: booking.clients.phone,
-          clientName: `${booking.clients.first_name} ${booking.clients.last_name}`,
-          serviceName: booking.services.name,
-          date: booking.booking_date,
-          time: booking.booking_time.substring(0, 5),
-          depositAmount: booking.deposit_amount
-        });
-      }
-
-      setIsDetailsOpen(false);
-      setSelectedBooking(null);
-    } catch (err) {
-      console.error(err);
-      showConfirm({
-        title: 'Error de Actualización',
-        message: 'Ocurrió un error al actualizar el estado del turno.',
-        confirmText: 'Entendido',
-        variant: 'danger',
-        showCancel: false,
-        onConfirm: () => { }
-      });
-    }
-  };
-
-  // Reschedule Booking Action
-  const handleRescheduleSubmit = async () => {
-    if (!selectedBooking || !rescheduleDate || !rescheduleTime) return;
-
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          booking_date: rescheduleDate,
-          booking_time: `${rescheduleTime}:00`,
-          status: 'RESCHEDULED'
-        })
-        .eq('id', selectedBooking.id);
-
-      if (error) throw error;
-
-      // Dispatch notifications
-      notifications.dispatch('RESCHEDULE', {
-        toEmail: selectedBooking.clients.email,
-        toPhone: selectedBooking.clients.phone,
-        clientName: `${selectedBooking.clients.first_name} ${selectedBooking.clients.last_name}`,
-        serviceName: selectedBooking.services.name,
-        date: rescheduleDate,
-        time: rescheduleTime,
-        depositAmount: selectedBooking.deposit_amount,
-        bookingId: selectedBooking.id,
-        quantity: selectedBooking.quantity || 1
-      });
-
-      // Update state
-      setBookings(prev => prev.map(b => b.id === selectedBooking.id ? {
-        ...b,
-        booking_date: rescheduleDate,
-        booking_time: `${rescheduleTime}:00`,
-        status: 'RESCHEDULED'
-      } : b));
-
-      setIsRescheduling(false);
-      setIsDetailsOpen(false);
-      setSelectedBooking(null);
-    } catch (err) {
-      console.error(err);
-      showConfirm({
-        title: 'Error al Reprogramar',
-        message: 'Ocurrió un error al intentar reprogramar el turno. Por favor, intente de nuevo.',
-        confirmText: 'Entendido',
-        variant: 'danger',
-        showCancel: false,
-        onConfirm: () => { }
-      });
-    }
-  };
 
   // Create Manual Booking Action
   const handleManualBookingSubmit = async (e: React.FormEvent) => {
@@ -677,30 +458,32 @@ export const AdminCalendar: React.FC = () => {
       let finalClientId = '';
 
       // Get or create client
+      let normalizedPhone = manualPhone;
       if (manualClientExists) {
         // Retrieve and update details if modified
-        const { data: existingClients } = await supabase.from('clients').select('*').eq('email', manualEmail);
+        const { data: existingClients } = await supabase.from('clients').select('*').eq('phone', normalizedPhone);
         if (existingClients && existingClients.length > 0) {
           finalClientId = existingClients[0].id;
           // Check if any fields changed
           if (existingClients[0].first_name !== manualFirstName ||
             existingClients[0].last_name !== manualLastName ||
-            existingClients[0].phone !== manualPhone) {
+            existingClients[0].email !== manualEmail) {
             await supabase.from('clients')
               .update({
                 first_name: manualFirstName,
                 last_name: manualLastName,
-                phone: manualPhone
+                email: manualEmail
               })
               .eq('id', finalClientId);
           }
         }
       } else {
+        normalizedPhone = normalizePhone(manualPhone);
         const { data, error } = await supabase.from('clients').insert({
           email: manualEmail,
           first_name: manualFirstName,
           last_name: manualLastName,
-          phone: manualPhone
+          phone: normalizedPhone
         }).select();
 
         if (error) throw error;
@@ -829,200 +612,18 @@ export const AdminCalendar: React.FC = () => {
       )}
 
       {/* DETAIL MODAL WITH ACTIONS */}
-      <Modal
+      <BookingDetailsModal
         isOpen={isDetailsOpen && selectedBooking !== null}
         onClose={() => {
           setIsDetailsOpen(false);
           setSelectedBooking(null);
         }}
-        title="Gestión de Turno"
-        size="lg"
-      >
-        {selectedBooking && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-            {/* Left Column: Details & Client & Pricing */}
-            <div className="space-y-5 border-r border-neutral-100 pr-0 md:pr-6">
-              {/* Booking Overview info */}
-              <div className="bg-neutral-50 border border-neutral-100 p-4 rounded-xl space-y-2">
-                <h3 className="text-base font-extrabold border-b border-neutral-200 pb-2 text-offblack">{selectedBooking.services?.name}</h3>
-                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><CalendarRange className="h-4 w-4 text-primary" /> <strong>Fecha:</strong> {formatDate(selectedBooking.booking_date)}</p>
-                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Clock className="h-4 w-4 text-primary" /> <strong>Hora:</strong> {selectedBooking.booking_time.substring(0, 5)} hs ({selectedBooking.duration} min)</p>
-                <p className="text-sm flex items-center gap-2 text-gray-600 font-semibold"><Scissors className="h-4 w-4 text-primary" /> <strong>Cantidad:</strong> {selectedBooking.quantity || 1} {(selectedBooking.quantity || 1) === 1 ? 'turno' : 'turnos'}</p>
-                <p className="text-sm text-gray-600 font-semibold flex items-center gap-2">
-                  <strong>Estado Actual:</strong>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(selectedBooking.status)}`}>
-                    {translateStatus(selectedBooking.status)}
-                  </span>
-                </p>
-              </div>
-
-              {/* Client Info */}
-              <div className="space-y-2.5">
-                <h4 className="font-extrabold text-xs text-gray-400 border-b border-neutral-100 pb-1.5 uppercase">Datos del Cliente</h4>
-                <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><User className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.first_name} {selectedBooking.clients?.last_name}</p>
-                <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><Phone className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.phone}</p>
-                <p className="text-sm flex items-center gap-2.5 text-gray-600 font-semibold"><Mail className="h-4 w-4 text-gray-400" /> {selectedBooking.clients?.email}</p>
-                {loadingClientStats ? (
-                  <p className="text-[10px] text-gray-400 animate-pulse font-semibold">Calculando reputación...</p>
-                ) : clientStats && clientStats.total >= 2 && clientStats.rate >= 0.3 ? (
-                  <div className="bg-danger/10 border border-danger/20 text-danger p-2.5 rounded-xl text-xs font-bold mt-1">
-                    ⚠️ Alerta Inasistencias: {Math.round(clientStats.rate * 100)}% de ausencias ({clientStats.noShows} de {clientStats.total} turnos)
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Price Details */}
-              <div className="space-y-1.5 border-t border-neutral-100 pt-4 text-gray-600 font-semibold text-sm text-left">
-                <div className="flex justify-between">
-                  <span>Precio Total:</span>
-                  <span>{((selectedBooking.services as any)?.price || 0) === 0 ? 'Sin definir' : `$${formatCurrency(((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1))}`}</span>
-                </div>
-                {selectedBooking.deposit_amount > 0 && (
-                  <div className="flex justify-between text-success">
-                    <span>Seña Abonada (MP):</span>
-                    <span>-${formatCurrency(selectedBooking.deposit_amount)}</span>
-                  </div>
-                )}
-                {((selectedBooking.services as any)?.price || 0) > 0 && (
-                  <div className="flex justify-between text-offblack font-bold border-t border-dashed border-neutral-200 pt-1.5 mt-1">
-                    <span>Resta pagar en local:</span>
-                    <span>
-                      ${formatCurrency(
-                        selectedBooking.deposit_amount > 0
-                          ? (((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)) - selectedBooking.deposit_amount
-                          : ((selectedBooking.services as any)?.price || 0) * (selectedBooking.quantity || 1)
-                      )}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Column: Actions or Rescheduling */}
-            <div className="space-y-5 flex flex-col justify-between">
-              {/* Change Status Action Row */}
-              {!isRescheduling ? (
-                <div className="space-y-4">
-                  <h4 className="font-extrabold text-xs text-gray-400 border-b border-neutral-100 pb-1.5 uppercase">Acciones Rápidas</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      variant="secondary"
-                      onClick={() => updateStatus(selectedBooking.id, 'COMPLETED')}
-                      className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
-                      disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
-                    >
-                      <CheckCircle className="h-4 w-4 text-success" /> Completado
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => updateStatus(selectedBooking.id, 'NO_SHOW')}
-                      className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
-                      disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
-                    >
-                      <XCircle className="h-4 w-4 text-warning" /> No Asistió
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setIsRescheduling(true)}
-                      className="text-xs flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer hover:bg-neutral-50"
-                      disabled={selectedBooking.status === 'CANCELLED' || selectedBooking.status === 'COMPLETED'}
-                    >
-                      <RefreshCw className="h-4 w-4 text-secondary" /> Reprogramar
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => updateStatus(selectedBooking.id, 'CANCELLED')}
-                      className="text-xs border-danger/25 text-danger hover:bg-danger/5 hover:border-danger flex justify-center items-center gap-1.5 py-3 rounded-xl cursor-pointer"
-                      disabled={selectedBooking.status === 'CANCELLED'}
-                    >
-                      <XCircle className="h-4 w-4 text-danger" /> Cancelar Turno
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                /* RESCHEDULING CONTAINER */
-                <div className="bg-secondary/5 border border-secondary/15 p-4 rounded-xl space-y-4 text-left flex-1 flex flex-col justify-between">
-                  <div>
-                    <h4 className="font-extrabold text-sm text-secondary border-b border-secondary/10 pb-1.5 mb-3">Reprogramar Turno</h4>
-
-                    <div className="flex flex-col gap-1.5 mb-3">
-                      <label className="text-xs font-bold text-offblack">Nueva Fecha:</label>
-                      <input
-                        type="date"
-                        min={new Date().toISOString().split('T')[0]}
-                        value={rescheduleDate}
-                        onChange={(e) => setRescheduleDate(e.target.value)}
-                        className="font-bold text-sm border border-neutral-200 p-2.5 rounded-lg bg-white focus:outline-none focus:border-primary"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-offblack">Nuevo Horario:</label>
-                      {!rescheduleDate ? (
-                        <span className="text-xs text-gray-400 font-semibold italic">Seleccione fecha primero.</span>
-                      ) : loadingReschedSlots ? (
-                        <span className="text-xs font-bold text-gray-400">Buscando horarios libres...</span>
-                      ) : rescheduleSlots.length === 0 ? (
-                        <span className="text-xs text-danger font-bold">No hay horarios libres para esta fecha.</span>
-                      ) : (
-                        <div className="grid grid-cols-4 gap-1.5 max-h-[140px] overflow-y-auto pr-1">
-                          {rescheduleSlots.map((slot, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              disabled={!slot.available}
-                              onClick={() => setRescheduleTime(slot.time)}
-                              className={`py-1.5 text-center font-bold border rounded-lg text-xs cursor-pointer ${!slot.available
-                                  ? 'bg-neutral-50 text-gray-300 border-neutral-100 cursor-not-allowed'
-                                  : rescheduleTime === slot.time
-                                    ? 'bg-primary text-white border-transparent shadow-sm'
-                                    : 'bg-white text-offblack border-neutral-200 hover:bg-neutral-50'
-                                }`}
-                            >
-                              {slot.time}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 justify-end pt-3 border-t border-secondary/10">
-                    <Button variant="ghost" onClick={() => setIsRescheduling(false)} className="py-1.5 px-3.5 text-xs rounded-lg cursor-pointer">
-                      Volver
-                    </Button>
-                    <Button
-                      variant="primary"
-                      disabled={!rescheduleDate || !rescheduleTime}
-                      onClick={handleRescheduleSubmit}
-                      className="py-1.5 px-3.5 text-xs rounded-lg cursor-pointer"
-                    >
-                      Confirmar
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Close Button for Details Modal (shows when not rescheduling) */}
-              {!isRescheduling && (
-                <div className="flex justify-end pt-4 border-t border-neutral-100">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setIsDetailsOpen(false);
-                      setSelectedBooking(null);
-                    }}
-                    className="cursor-pointer"
-                  >
-                    Cerrar
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
+        booking={selectedBooking}
+        onStatusChange={(updatedBooking) => {
+          setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
+          setSelectedBooking(updatedBooking);
+        }}
+      />
 
       {/* MANUAL BOOKING CREATOR MODAL */}
       <Modal
@@ -1055,7 +656,7 @@ export const AdminCalendar: React.FC = () => {
                   className="flex-1"
                   required
                 />
-                <Button type="button" variant="secondary" onClick={handleManualEmailSearch} className="mb-1 py-2.5 rounded-lg cursor-pointer">
+                <Button type="button" variant="secondary" onClick={handleManualPhoneSearch} className="mb-1 py-2.5 rounded-lg cursor-pointer">
                   Buscar
                 </Button>
               </div>
@@ -1191,89 +792,7 @@ export const AdminCalendar: React.FC = () => {
         </form>
       </Modal>
 
-      {/* MODAL PARA SOLICITAR MONTO COBRADO (SERVICIOS SIN PRECIO DEFINIDO) */}
-      <Modal
-        isOpen={isCollectedAmountModalOpen}
-        onClose={() => {
-          setIsCollectedAmountModalOpen(false);
-          setPendingBookingIdToComplete(null);
-        }}
-        title="Registrar Cobro de Turno"
-        size="sm"
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (pendingBookingIdToComplete) {
-              const amount = parseInt(enteredCollectedAmount, 10) || 0;
-              updateStatus(pendingBookingIdToComplete, 'COMPLETED', amount);
-              setIsCollectedAmountModalOpen(false);
-              setPendingBookingIdToComplete(null);
-            }
-          }}
-          className="space-y-4 text-left"
-        >
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-gray-600 leading-relaxed">
-              El precio de este servicio está sin definir. Por favor, ingrese el monto cobrado en el local (sin incluir la seña).
-            </p>
-            {pendingBookingIdToComplete && (() => {
-              const pendingBooking = bookings.find(b => b.id === pendingBookingIdToComplete);
-              if (pendingBooking && pendingBooking.deposit_amount > 0) {
-                return (
-                  <div className="bg-amber-50 text-amber-800 border border-amber-100 p-3 rounded-xl text-xs font-semibold">
-                    ⚠️ <strong>Seña ya abonada:</strong> Se han pagado ${formatCurrency(pendingBooking.deposit_amount)} de seña. Ingrese únicamente la **diferencia** cobrada presencialmente (sin contemplar la seña).
-                  </div>
-                );
-              }
-              return null;
-            })()}
-          </div>
 
-          <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-bold text-offblack">Monto Cobrado ($)</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={enteredCollectedAmount}
-              onChange={(e) => setEnteredCollectedAmount(e.target.value)}
-              placeholder="Ej. 1500"
-              className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
-              required
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-3 border-t border-neutral-100">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setIsCollectedAmountModalOpen(false);
-                setPendingBookingIdToComplete(null);
-              }}
-              className="cursor-pointer"
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" variant="primary" className="cursor-pointer">
-              Confirmar y Completar
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* GLOBAL CONFIRMATION DIALOG */}
-      <ConfirmationModal
-        isOpen={confirmConfig.isOpen}
-        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
-        onConfirm={confirmConfig.onConfirm}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
-        confirmText={confirmConfig.confirmText}
-        variant={confirmConfig.variant}
-        showCancel={confirmConfig.showCancel}
-      />
     </div>
   );
 };

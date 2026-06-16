@@ -6,6 +6,7 @@ import { formatDate } from '../../utils/format';
 import { Button } from '../../components/ui/Button';
 import { User, Phone, Mail, Calendar, Trash2, LayoutGrid, List } from 'lucide-react';
 import { ConfirmationModal } from '../../components/ui/ConfirmationModal';
+import { BookingDetailsModal } from '../../components/BookingDetailsModal';
 
 const translateStatus = (status: string) => {
   switch (status) {
@@ -45,9 +46,14 @@ interface Booking {
   booking_date: string;
   booking_time: string;
   status: string;
-  services: {
-    name: string;
-  };
+  services: any;
+  clients?: any;
+  duration?: number;
+  deposit_amount?: number;
+  local_amount_paid?: number;
+  payment_id?: string | null;
+  notes?: string | null;
+  quantity?: number;
 }
 
 export const ClientsManager: React.FC = () => {
@@ -57,6 +63,9 @@ export const ClientsManager: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedClientBookings, setSelectedClientBookings] = useState<Booking[]>([]);
   const [activeClientName, setActiveClientName] = useState<string>('');
+
+  const [selectedBookingDetails, setSelectedBookingDetails] = useState<Booking | null>(null);
+  const [isBookingDetailsOpen, setIsBookingDetailsOpen] = useState(false);
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'bookings-desc'>('name-asc');
@@ -97,7 +106,7 @@ export const ClientsManager: React.FC = () => {
     async function loadData() {
       setLoading(true);
       const { data: clientList } = await supabase.from('clients').select('*');
-      const { data: bookingList } = await supabase.from('bookings').select('*, services(name)');
+      const { data: bookingList } = await supabase.from('bookings').select('*, services(*), clients(*)');
       
       if (clientList) setClients(clientList);
       if (bookingList) setBookings(bookingList);
@@ -127,6 +136,17 @@ export const ClientsManager: React.FC = () => {
     const cb = bookings.filter(b => b.client_id === client.id).sort((a, b) => b.booking_date.localeCompare(a.booking_date));
     setSelectedClientBookings(cb);
     setActiveClientName(`${client.first_name} ${client.last_name}`);
+  };
+
+  const handleOpenBooking = (b: Booking) => {
+    setSelectedBookingDetails(b);
+    setIsBookingDetailsOpen(true);
+  };
+
+  const handleStatusChange = (updatedBooking: any) => {
+    setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
+    setSelectedClientBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
+    setSelectedBookingDetails(updatedBooking);
   };
 
   const sortedAndFilteredClients = clients
@@ -429,7 +449,11 @@ export const ClientsManager: React.FC = () => {
                   ) : (
                     <div className="max-h-[50dvh] overflow-y-auto pr-1 space-y-2.5">
                       {selectedClientBookings.map(b => (
-                        <div key={b.id} className="border border-neutral-200 p-3 bg-neutral-50 rounded-lg space-y-1.5 text-left">
+                        <div 
+                          key={b.id} 
+                          onClick={() => handleOpenBooking(b)}
+                          className="border border-neutral-200 p-3 bg-neutral-50 rounded-lg space-y-1.5 text-left cursor-pointer hover:bg-neutral-100 hover:border-neutral-300 transition-colors"
+                        >
                           <div className="flex justify-between items-center text-[10px] font-semibold text-gray-500">
                             <span>{formatDate(b.booking_date)} | {b.booking_time.substring(0, 5)} hs</span>
                             <span className={`px-2 py-0.5 rounded-full font-bold ${getStatusBadgeClass(b.status)}`}>
@@ -457,6 +481,15 @@ export const ClientsManager: React.FC = () => {
         confirmText={confirmConfig.confirmText}
         variant={confirmConfig.variant}
         showCancel={confirmConfig.showCancel}
+      />
+      <BookingDetailsModal
+        isOpen={isBookingDetailsOpen && selectedBookingDetails !== null}
+        onClose={() => {
+          setIsBookingDetailsOpen(false);
+          setSelectedBookingDetails(null);
+        }}
+        booking={selectedBookingDetails as any}
+        onStatusChange={handleStatusChange}
       />
     </div>
   );

@@ -26,10 +26,10 @@ create table if not exists public.business_settings (
 -- 2. Clients (No client login, unique email keys database)
 create table if not exists public.clients (
     id uuid primary key default gen_random_uuid(),
-    email text unique not null,
+    email text not null,
     first_name text not null,
     last_name text not null,
-    phone text not null,
+    phone text unique not null,
     created_at timestamp with time zone default now(),
     updated_at timestamp with time zone default now()
 );
@@ -130,8 +130,8 @@ create policy "Allow admin write access to business settings"
     on public.business_settings for all using (auth.role() = 'authenticated');
 
 -- 2. Clients RLS
-create policy "Allow public lookup by email or insert clients"
-    on public.clients for select using (true); -- Public can lookup client email to autocomplete
+create policy "Allow public lookup by phone or insert clients"
+    on public.clients for select using (true); -- Public can lookup client phone to autocomplete
 
 create policy "Allow public client creation"
     on public.clients for insert with check (true);
