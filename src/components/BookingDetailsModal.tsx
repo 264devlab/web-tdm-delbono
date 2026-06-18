@@ -7,6 +7,26 @@ import { Modal } from './ui/Modal';
 import { notifications } from '../lib/notifications';
 import { CalendarRange, Clock, Scissors, User, Phone, Mail, CheckCircle, XCircle, RefreshCw, Save } from 'lucide-react';
 
+const formatTimestamp = (timestampStr?: string) => {
+  if (!timestampStr) return '';
+  try {
+    const date = new Date(timestampStr);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }) + ' hs';
+    }
+  } catch (e) {
+    // ignore
+  }
+  return timestampStr;
+};
+
 const translateStatus = (status: string) => {
   switch (status) {
     case 'PENDING_PAYMENT': return 'Pendiente Pago';
@@ -54,6 +74,8 @@ interface Booking {
     price?: number;
   };
   quantity?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface BookingDetailsModalProps {
@@ -182,12 +204,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ isOpen
     if (!booking || !rescheduleDate || !rescheduleTime) return;
 
     try {
+      const nowISO = new Date().toISOString();
       const { error } = await supabase
         .from('bookings')
         .update({
           booking_date: rescheduleDate,
           booking_time: `${rescheduleTime}:00`,
-          status: 'RESCHEDULED'
+          status: 'RESCHEDULED',
+          updated_at: nowISO
         })
         .eq('id', booking.id);
 
@@ -205,7 +229,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ isOpen
         quantity: booking.quantity || 1
       });
 
-      const updated = { ...booking, booking_date: rescheduleDate, booking_time: `${rescheduleTime}:00`, status: 'RESCHEDULED' as const };
+      const updated = {
+        ...booking,
+        booking_date: rescheduleDate,
+        booking_time: `${rescheduleTime}:00`,
+        status: 'RESCHEDULED' as const,
+        updated_at: nowISO
+      };
       if (onStatusChange) onStatusChange(updated);
 
       setIsRescheduling(false);
@@ -259,6 +289,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ isOpen
                     {translateStatus(booking.status)}
                   </span>
                 </p>
+                {booking.created_at && (
+                  <p className="text-[10px] text-gray-400 font-semibold pt-1 border-t border-neutral-200/50 mt-1">
+                    <strong>Creado:</strong> {formatTimestamp(booking.created_at)}
+                  </p>
+                )}
+                {booking.status === 'RESCHEDULED' && booking.updated_at && (
+                  <p className="text-[10px] text-gray-400 font-semibold">
+                    <strong>Reprogramado:</strong> {formatTimestamp(booking.updated_at)}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2.5">

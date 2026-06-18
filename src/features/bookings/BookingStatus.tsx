@@ -313,7 +313,8 @@ export const BookingStatus: React.FC<{ settings?: any }> = ({ settings }) => {
         .update({
           booking_date: rescheduleDate,
           booking_time: `${rescheduleTime}:00`,
-          status: 'RESCHEDULED'
+          status: 'RESCHEDULED',
+          updated_at: new Date().toISOString()
         })
         .eq('id', id);
 
