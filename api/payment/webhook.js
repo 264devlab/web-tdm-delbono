@@ -45,6 +45,12 @@ export default async function handler(req, res) {
       return res.status(200).send('Payment not approved yet');
     }
 
+    // Para evitar duplicados por colisión de webhooks concurrentes de MP (created vs updated)
+    // Retrasamos el 'payment.updated' 2 segundos.
+    if (type === 'payment.updated' || req.body?.action === 'payment.updated') {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
     // Verificamos si ya existe la reserva en Supabase
     const { data: existingBookings, error: checkErr } = await supabase
       .from('bookings')
@@ -116,10 +122,11 @@ export default async function handler(req, res) {
     } = metadata;
 
     let clientId = '';
+    // Buscamos por teléfono en lugar de correo, ya que el teléfono es único por persona y el frontend usa el teléfono.
     const { data: clients, error: clientFindErr } = await supabase
       .from('clients')
       .select('id')
-      .eq('email', client_email);
+      .eq('phone', client_phone);
 
     if (clientFindErr) throw clientFindErr;
 
@@ -130,7 +137,7 @@ export default async function handler(req, res) {
         .update({
           first_name: client_first_name,
           last_name: client_last_name,
-          phone: client_phone
+          email: client_email
         })
         .eq('id', clientId);
     } else {
@@ -157,6 +164,17 @@ export default async function handler(req, res) {
       throw new Error('Servicio no encontrado');
     }
     const duration = services[0].estimated_duration_minutes;
+
+    // Doble verificación justo antes de insertar para mitigar race conditions extremas
+    const { data: doubleCheck } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('payment_id', paymentId);
+      
+    if (doubleCheck && doubleCheck.length > 0) {
+      console.log(`[Webhook] Reserva doble detectada y evitada para el pago ${paymentId}`);
+      return res.status(200).send('Already processed (double check)');
+    }
 
     const depositAmountTotal = Number(deposit_amount) * Number(booking_quantity);
     const { data: newBooking, error: bookingErr } = await supabase
