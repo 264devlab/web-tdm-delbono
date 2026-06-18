@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { MercadoPagoConfig, Payment, Preference, MerchantOrder } from 'mercadopago';
+import { generateEmailHtml, generateWhatsAppMessage } from '../lib/notificationsTemplate.js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
@@ -175,8 +176,75 @@ export default async function handler(req, res) {
       .select();
 
     if (bookingErr) throw bookingErr;
+    const createdBookingId = newBooking[0].id;
+    console.log(`[Webhook] Reserva creada exitosamente (Booking ID: ${createdBookingId}) por pago ${paymentId}`);
 
-    console.log(`[Webhook] Reserva creada exitosamente (Booking ID: ${newBooking[0].id}) por pago ${paymentId}`);
+    // --- ENVIAR NOTIFICACIONES DESDE EL WEBHOOK ---
+    try {
+      const { data: settingsData } = await supabase.from('business_settings').select('*').limit(1);
+      const settings = (settingsData && settingsData.length > 0) ? settingsData[0] : { business_name: 'Negocio' };
+
+      const payload = {
+        toEmail: client_email,
+        toPhone: client_phone,
+        clientName: `${client_first_name} ${client_last_name}`,
+        serviceName: metadata.service_name || 'Servicio',
+        date: booking_date,
+        time: booking_time,
+        depositAmount: depositAmountTotal,
+        bookingId: createdBookingId,
+        quantity: Number(booking_quantity),
+        remainingAmount: metadata.service_price !== undefined ? (Number(metadata.service_price) * Number(booking_quantity)) - depositAmountTotal : undefined
+      };
+
+      const RESEND_API_KEY = process.env.RESEND_API_KEY;
+      if (RESEND_API_KEY && client_email) {
+        const EMAIL_FROM = process.env.EMAIL_FROM || 'Notificaciones <onboarding@resend.dev>';
+        let emailFrom = EMAIL_FROM;
+        if (settings.business_name) {
+          const emailMatch = EMAIL_FROM.match(/<(.+)>/) || [null, EMAIL_FROM];
+          emailFrom = `${settings.business_name} <${(emailMatch[1] || EMAIL_FROM).trim()}>`;
+        }
+
+        const originUrl = process.env.VITE_SITE_URL || ('https://' + req.headers.host) || '';
+        const emailHtml = generateEmailHtml('CONFIRMATION', payload, settings, originUrl);
+        
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${RESEND_API_KEY}`
+          },
+          body: JSON.stringify({
+            from: emailFrom,
+            to: [client_email],
+            subject: `Confirmación de Turno - ${settings.business_name}`,
+            html: emailHtml
+          })
+        }).then(res => res.json()).then(data => {
+          if (data.id) console.log(`[Webhook] Correo enviado: ${data.id}`);
+          else console.warn(`[Webhook] Falló envío de correo:`, data);
+        }).catch(e => console.warn('[Webhook] Error red correo:', e.message));
+      }
+
+      const WA_SERVER_URL = process.env.VITE_WA_SERVER_URL || process.env.WA_SERVER_URL;
+      const WA_API_KEY = process.env.WA_API_KEY || process.env.VITE_WA_API_KEY;
+      if (WA_SERVER_URL && client_phone) {
+        const originUrl = process.env.VITE_SITE_URL || ('https://' + req.headers.host) || '';
+        const waMsg = generateWhatsAppMessage('CONFIRMATION', payload, settings, originUrl);
+        const headers = { 'Content-Type': 'application/json' };
+        if (WA_API_KEY) headers['x-api-key'] = WA_API_KEY;
+
+        await fetch(`${WA_SERVER_URL}/api/wa/send`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ phone: client_phone, message: waMsg })
+        }).catch(e => console.warn('[Webhook] Servidor WA no disponible:', e.message));
+      }
+    } catch (notifErr) {
+      console.error('[Webhook] Error enviando notificaciones:', notifErr.message);
+    }
+
     return res.status(200).send('Booking created successfully');
 
   } catch (err) {

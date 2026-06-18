@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../../components/ui/Card';
 import { RefreshCw, CheckCircle2, AlertTriangle, HelpCircle } from 'lucide-react';
-import { notifications } from '../../lib/notifications';
 
 export const BookingPaymentConfirm: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -18,7 +17,6 @@ export const BookingPaymentConfirm: React.FC = () => {
     let isMounted = true;
 
     async function processConfirmation() {
-      // Validate inputs
       if (!preferenceId || !paymentId) {
         if (isMounted) {
           setStatus('error');
@@ -28,7 +26,6 @@ export const BookingPaymentConfirm: React.FC = () => {
         return;
       }
 
-      // Check payment status from Mercado Pago redirect
       if (paymentStatus !== 'success' && paymentStatus !== 'approved') {
         if (isMounted) {
           setStatus('rejected');
@@ -38,66 +35,51 @@ export const BookingPaymentConfirm: React.FC = () => {
         return;
       }
 
-      try {
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        const waApiKey = import.meta.env.VITE_WA_API_KEY;
-        if (waApiKey) {
-          headers['x-api-key'] = waApiKey;
-        }
+      const pollStatus = async (retries = 0) => {
+        if (!isMounted) return;
 
-        const response = await fetch('/api/payment/confirm_payment', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ preferenceId, paymentId }),
-        });
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          const waApiKey = import.meta.env.VITE_WA_API_KEY;
+          if (waApiKey) headers['x-api-key'] = waApiKey;
 
-        const data = await response.json();
+          const response = await fetch('/api/payment/confirm_payment', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ preferenceId, paymentId }),
+          });
 
-        if (response.ok && data.success) {
-          if (!isMounted) return;
-          setStatus('success');
+          const data = await response.json();
 
-          // If the booking was not already processed, dispatch notifications
-          if (!data.alreadyProcessed && data.metadata) {
-            const metadata = data.metadata;
-            const quantity = Number(metadata.booking_quantity || 1);
-            const depositAmount = Number(metadata.deposit_amount || 0);
-            const servicePrice = Number(metadata.service_price || 0);
-
-            notifications.dispatch('CONFIRMATION', {
-              toEmail: metadata.client_email,
-              toPhone: metadata.client_phone,
-              clientName: `${metadata.client_first_name} ${metadata.client_last_name}`,
-              serviceName: metadata.service_name,
-              date: metadata.booking_date,
-              time: metadata.booking_time,
-              depositAmount: depositAmount * quantity,
-              bookingId: data.bookingId,
-              quantity: quantity,
-              remainingAmount: servicePrice === 0 ? undefined : (servicePrice - depositAmount) * quantity,
-            });
+          if (response.ok && data.success) {
+            setStatus('success');
+            // Redirigir a la vista de turno
+            setTimeout(() => {
+              navigate(`/turno/${data.bookingId}?payment_status=success&payment_id=${paymentId}`);
+            }, 1500);
+          } else if (data.error === 'pending') {
+            // El webhook aún no ha insertado el turno. Seguir haciendo polling (hasta 15 intentos = 30 segs)
+            if (retries < 15) {
+              setTimeout(() => pollStatus(retries + 1), 2000);
+            } else {
+              setStatus('error');
+              setErrorMsg('Demora en el procesamiento. Tu turno se guardará en breve y recibirás un correo.');
+            }
+          } else {
+            throw new Error(data.error || 'Ocurrió un error al confirmar la reserva.');
           }
+        } catch (err: any) {
+          console.error('Error polling payment status:', err);
+          if (retries < 5) {
+            setTimeout(() => pollStatus(retries + 1), 2000);
+          } else {
+            setStatus('error');
+            setErrorMsg(err.message || 'Error de conexión.');
+          }
+        }
+      };
 
-          // Redirect to the booking status page with success status
-          setTimeout(() => {
-            navigate(`/turno/${data.bookingId}?payment_status=success&payment_id=${paymentId}`);
-          }, 1500);
-        } else {
-          throw new Error(data.error || 'Ocurrió un error al confirmar la reserva.');
-        }
-      } catch (err: any) {
-        console.error('Error confirming payment:', err);
-        if (isMounted) {
-          setStatus('error');
-          setErrorMsg(err.message || 'Error de conexión. Intentando procesar tu reserva...');
-          // Retry after 5 seconds
-          setTimeout(() => {
-            processConfirmation();
-          }, 5000);
-        }
-      }
+      pollStatus();
     }
 
     processConfirmation();
