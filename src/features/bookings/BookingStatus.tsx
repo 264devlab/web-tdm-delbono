@@ -46,20 +46,6 @@ export const BookingStatus: React.FC<{ settings?: any }> = ({ settings }) => {
 
         if (error) throw error;
 
-        // Dispatch confirmation notifications now that payment is approved
-        notifications.dispatch('CONFIRMATION', {
-          toEmail: booking.clients.email,
-          toPhone: booking.clients.phone,
-          clientName: `${booking.clients.first_name} ${booking.clients.last_name}`,
-          serviceName: booking.services.name,
-          date: booking.booking_date,
-          time: booking.booking_time.substring(0, 5),
-          depositAmount: booking.deposit_amount,
-          bookingId: booking.id,
-          quantity: booking.quantity,
-          remainingAmount: booking.services.price === 0 ? undefined : (booking.services.price * booking.quantity) - booking.deposit_amount
-        });
-
         await fetchBooking();
 
         // Clear search parameters from URL

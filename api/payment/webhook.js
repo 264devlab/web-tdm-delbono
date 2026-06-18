@@ -45,10 +45,25 @@ export default async function handler(req, res) {
       return res.status(200).send('Payment not approved yet');
     }
 
-    // Para evitar duplicados por colisión de webhooks concurrentes de MP (created vs updated)
-    // Retrasamos el 'payment.updated' 2 segundos.
-    if (type === 'payment.updated' || req.body?.action === 'payment.updated') {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    // Para evitar duplicados por colisión de webhooks concurrentes de MP (IPN vs Webhook, created vs updated)
+    // Stagger / Espaciamos las peticiones concurrentes para que no entren en carrera (race condition)
+    let delay = 0;
+    if (req.body && req.body.action) {
+      if (req.body.action === 'payment.created') {
+        delay = 0; // Se ejecuta de inmediato
+      } else if (req.body.action === 'payment.updated') {
+        delay = 2000; // Demoramos 2 segundos
+      } else {
+        delay = 1000; // Otras acciones de webhook
+      }
+    } else {
+      // Notificaciones IPN (que usualmente no traen body y vienen por query params)
+      delay = 4000; // Demoramos 4 segundos
+    }
+
+    if (delay > 0) {
+      console.log(`[Webhook] Espaciando procesamiento de pago ${paymentId} por ${delay}ms para evitar duplicación...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
 
     // Verificamos si ya existe la reserva en Supabase
@@ -92,15 +107,98 @@ export default async function handler(req, res) {
     }
 
     // Si ya era una reserva existente (re-pago)
-    if (!metadata && paymentInfo.external_reference && paymentInfo.external_reference !== 'draft') {
-        const bookingId = paymentInfo.external_reference;
+    const externalReference = paymentInfo.external_reference || (metadata && metadata.booking_id);
+    if (externalReference && externalReference !== 'draft') {
+        const bookingId = externalReference;
+        
+        // 1. Obtener los datos actuales de la reserva, cliente y servicio para las notificaciones
+        const { data: booking, error: fetchErr } = await supabase
+          .from('bookings')
+          .select('*, clients(*), services(*)')
+          .eq('id', bookingId)
+          .single();
+          
+        if (fetchErr || !booking) {
+          console.error('[Webhook] Reserva no encontrada para re-pago:', bookingId, fetchErr?.message);
+          return res.status(200).send('Booking not found for re-payment');
+        }
+
+        // 2. Confirmar el pago en la base de datos
         const { error: updErr } = await supabase
           .from('bookings')
           .update({ status: 'CONFIRMED', payment_id: paymentId })
           .eq('id', bookingId);
           
         if (updErr) throw updErr;
-        return res.status(200).send('Booking confirmed via external_reference');
+        console.log(`[Webhook] Reserva existente confirmada exitosamente (Booking ID: ${bookingId}) por pago ${paymentId}`);
+
+        // 3. Enviar notificaciones desde el backend
+        try {
+          const { data: settingsData } = await supabase.from('business_settings').select('*').limit(1);
+          const settings = (settingsData && settingsData.length > 0) ? settingsData[0] : { business_name: 'Negocio' };
+
+          const payload = {
+            toEmail: booking.clients.email,
+            toPhone: booking.clients.phone,
+            clientName: `${booking.clients.first_name} ${booking.clients.last_name}`,
+            serviceName: booking.services.name,
+            date: booking.booking_date,
+            time: booking.booking_time.substring(0, 5),
+            depositAmount: booking.deposit_amount,
+            bookingId: booking.id,
+            quantity: booking.quantity,
+            remainingAmount: booking.services.price !== undefined ? (Number(booking.services.price) * Number(booking.quantity)) - Number(booking.deposit_amount) : undefined
+          };
+
+          const RESEND_API_KEY = process.env.RESEND_API_KEY;
+          if (RESEND_API_KEY && booking.clients.email) {
+            const EMAIL_FROM = process.env.EMAIL_FROM || 'Notificaciones <onboarding@resend.dev>';
+            let emailFrom = EMAIL_FROM;
+            if (settings.business_name) {
+              const emailMatch = EMAIL_FROM.match(/<(.+)>/) || [null, EMAIL_FROM];
+              emailFrom = `${settings.business_name} <${(emailMatch[1] || EMAIL_FROM).trim()}>`;
+            }
+
+            const originUrl = process.env.VITE_SITE_URL || ('https://' + req.headers.host) || '';
+            const emailHtml = generateEmailHtml('CONFIRMATION', payload, settings, originUrl);
+            
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${RESEND_API_KEY}`
+              },
+              body: JSON.stringify({
+                from: emailFrom,
+                to: [booking.clients.email],
+                subject: `Confirmación de Turno - ${settings.business_name}`,
+                html: emailHtml
+              })
+            }).then(res => res.json()).then(data => {
+              if (data.id) console.log(`[Webhook] Correo de re-pago enviado: ${data.id}`);
+              else console.warn(`[Webhook] Falló envío de correo de re-pago:`, data);
+            }).catch(e => console.warn('[Webhook] Error red correo re-pago:', e.message));
+          }
+
+          const WA_SERVER_URL = process.env.VITE_WA_SERVER_URL || process.env.WA_SERVER_URL;
+          const WA_API_KEY = process.env.WA_API_KEY || process.env.VITE_WA_API_KEY;
+          if (WA_SERVER_URL && booking.clients.phone) {
+            const originUrl = process.env.VITE_SITE_URL || ('https://' + req.headers.host) || '';
+            const waMsg = generateWhatsAppMessage('CONFIRMATION', payload, settings, originUrl);
+            const headers = { 'Content-Type': 'application/json' };
+            if (WA_API_KEY) headers['x-api-key'] = WA_API_KEY;
+
+            await fetch(`${WA_SERVER_URL}/api/wa/send`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ phone: booking.clients.phone, message: waMsg })
+            }).catch(e => console.warn('[Webhook] Servidor WA re-pago no disponible:', e.message));
+          }
+        } catch (notifErr) {
+          console.error('[Webhook] Error enviando notificaciones para re-pago:', notifErr.message);
+        }
+
+        return res.status(200).send('Booking confirmed and notifications sent via external_reference/booking_id');
     }
 
     if (!metadata || !metadata.client_email) {
