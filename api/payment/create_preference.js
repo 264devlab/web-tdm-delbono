@@ -110,6 +110,7 @@ export default async function handler(req, res) {
 
     if (origin.startsWith('https://')) {
       preferenceBody.auto_return = 'approved';
+      preferenceBody.notification_url = `${origin}/api/payment/webhook`;
     }
 
     const result = await preference.create({
