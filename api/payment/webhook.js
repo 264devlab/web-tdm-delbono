@@ -45,6 +45,17 @@ export default async function handler(req, res) {
       return res.status(200).send('Payment not approved yet');
     }
 
+    // Evitar procesar eventos de liberación de fondos o actualizaciones de pagos viejos
+    if (paymentInfo.date_approved) {
+      const dateApproved = new Date(paymentInfo.date_approved);
+      const now = new Date();
+      const maxAgeMs = 48 * 60 * 60 * 1000; // 48 horas
+      if (now - dateApproved > maxAgeMs) {
+        console.log(`[Webhook] Ignorando evento para pago antiguo ${paymentId} (aprobado el ${paymentInfo.date_approved}) para evitar duplicaciones o recreaciones.`);
+        return res.status(200).send('OK - Ignored old payment event');
+      }
+    }
+
     // Para evitar duplicados por colisión de webhooks concurrentes de MP (IPN vs Webhook, created vs updated)
     // Stagger / Espaciamos las peticiones concurrentes para que no entren en carrera (race condition)
     let delay = 0;
