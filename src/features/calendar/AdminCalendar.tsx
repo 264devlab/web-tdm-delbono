@@ -78,15 +78,21 @@ export const AdminCalendar: React.FC = () => {
   const [manualLastName, setManualLastName] = useState<string>('');
   const [manualPhone, setManualPhone] = useState<string>('');
   const [manualDate, setManualDate] = useState<string>('');
-  const [manualSlots, setManualSlots] = useState<{ time: string; available: boolean }[]>([]);
+  //const [manualSlots, setManualSlots] = useState<{ time: string; available: boolean }[]>([]);
+  const [manualSlots, setManualSlots] = useState<BookingSlot[]>([]);
   const [manualTime, setManualTime] = useState<string>('');
   const [manualClientExists, setManualClientExists] = useState<boolean>(false);
+  const [manualClientNotFound, setManualClientNotFound] = useState<boolean>(false);
   const [manualNotes, setManualNotes] = useState<string>('');
   const [loadingManualSlots, setLoadingManualSlots] = useState<boolean>(false);
   const [manualError, setManualError] = useState<string>('');
   const [manualQuantity, setManualQuantity] = useState<number>(1);
-
   const selectedServiceObj = services.find(s => s.id === manualServiceId);
+
+  // Calculate remaining capacity based on selected slot
+  const selectedSlotObj = manualSlots.find(s => s.time === manualTime);
+  // If no time is selected yet, use the maximum allowed by the service
+  const remainingCapacity = selectedSlotObj?.remainingCapacity ?? (selectedServiceObj?.max_concurrent_bookings || 1);
 
   // Reset manual quantity when service or date changes
   useEffect(() => {
@@ -289,10 +295,10 @@ export const AdminCalendar: React.FC = () => {
                   setView('day');
                 }}
                 className={`min-h-[70px] p-1.5 border rounded-lg cursor-pointer transition-all flex flex-col justify-between ${isFocused
-                    ? 'border-primary bg-primary/5 shadow-2xs'
-                    : isToday
-                      ? 'border-secondary/35 bg-secondary/5'
-                      : 'border-neutral-200 hover:border-primary/20 bg-white'
+                  ? 'border-primary bg-primary/5 shadow-2xs'
+                  : isToday
+                    ? 'border-secondary/35 bg-secondary/5'
+                    : 'border-neutral-200 hover:border-primary/20 bg-white'
                   }`}
               >
                 <div className="flex justify-between items-center">
@@ -417,14 +423,14 @@ export const AdminCalendar: React.FC = () => {
           setLoadingManualSlots(false);
         });
     }
-  }, [manualServiceId, manualDate, manualQuantity]);
+  }, [manualServiceId, manualDate]);
 
   // Handle client search for manual booking
   const handleManualPhoneSearch = async () => {
     if (!manualPhone) return;
     const normalizedPhone = normalizePhone(manualPhone);
     if (normalizedPhone !== manualPhone) setManualPhone(normalizedPhone);
-    
+
     try {
       const { data } = await supabase.from('clients').select('*').eq('phone', normalizedPhone);
       if (data && data.length > 0) {
@@ -432,17 +438,18 @@ export const AdminCalendar: React.FC = () => {
         setManualLastName(data[0].last_name);
         setManualEmail(data[0].email);
         setManualClientExists(true);
+        setManualClientNotFound(false);
       } else {
         setManualFirstName('');
         setManualLastName('');
         setManualEmail('');
         setManualClientExists(false);
+        setManualClientNotFound(true);
       }
     } catch (err) {
       console.error(err);
     }
   };
-
 
 
   // Create Manual Booking Action
@@ -540,6 +547,8 @@ export const AdminCalendar: React.FC = () => {
         setManualTime('');
         setManualNotes('');
         setManualQuantity(1);
+        setManualClientExists(false);
+        setManualClientNotFound(false);
       }
     } catch (err) {
       console.error(err);
@@ -628,7 +637,16 @@ export const AdminCalendar: React.FC = () => {
       {/* MANUAL BOOKING CREATOR MODAL */}
       <Modal
         isOpen={isManualBookingOpen}
-        onClose={() => setIsManualBookingOpen(false)}
+        onClose={() => {
+          setIsManualBookingOpen(false);
+          setManualClientExists(false);
+          setManualClientNotFound(false);
+          setManualPhone('');
+          setManualFirstName('');
+          setManualLastName('');
+          setManualEmail('');
+          setManualDate('');
+        }}
         title="Crear Turno Manualmente"
         size="lg"
       >
@@ -648,12 +666,15 @@ export const AdminCalendar: React.FC = () => {
 
               <div className="flex gap-2 items-end">
                 <Input
-                  label="Correo Electrónico Cliente"
-                  type="email"
-                  value={manualEmail}
-                  onChange={(e) => setManualEmail(e.target.value)}
-                  placeholder="cliente@correo.com"
-                  className="flex-1"
+                  label="Celular (WhatsApp)"
+                  type="tel"
+                  value={manualPhone}
+                  onChange={(e) => {
+                    setManualPhone(e.target.value);
+                    setManualClientExists(false);
+                    setManualClientNotFound(false);
+                  }}
+                  placeholder="2645012345"
                   required
                 />
                 <Button type="button" variant="secondary" onClick={handleManualPhoneSearch} className="mb-1 py-2.5 rounded-lg cursor-pointer">
@@ -663,7 +684,13 @@ export const AdminCalendar: React.FC = () => {
 
               {manualClientExists && (
                 <div className="bg-success/10 border border-success/20 p-2 rounded-lg text-xs font-bold text-success">
-                  Cliente encontrado. Datos autocompletados.
+                  Cliente registrado, datos autocompletados!
+                </div>
+              )}
+
+              {manualClientNotFound && (
+                <div className="bg-danger/10 border border-danger/20 p-2 rounded-lg text-xs font-bold text-danger">
+                  Cliente no registrado, complete sus datos!
                 </div>
               )}
 
@@ -687,13 +714,26 @@ export const AdminCalendar: React.FC = () => {
               </div>
 
               <Input
-                label="Celular (WhatsApp)"
-                type="tel"
-                value={manualPhone}
-                onChange={(e) => setManualPhone(e.target.value)}
-                placeholder="2645012345"
+                label="Correo Electrónico Cliente"
+                type="email"
+                value={manualEmail}
+                onChange={(e) => setManualEmail(e.target.value)}
+                placeholder="cliente@correo.com"
+                className="flex-1"
                 required
               />
+
+              <Button type="button" variant="secondary" onClick={() => {
+                setManualPhone('');
+                setManualFirstName('');
+                setManualLastName('');
+                setManualEmail('');
+                setManualClientExists(false);
+                setManualClientNotFound(false);
+              }} className="text-xs rounded-lg cursor-pointer">
+                Limpiar datos
+              </Button>
+
             </div>
 
             {/* Right Column: Service & Booking details */}
@@ -714,21 +754,6 @@ export const AdminCalendar: React.FC = () => {
                   ))}
                 </select>
               </div>
-
-              {selectedServiceObj && (
-                <div className="flex flex-col gap-1.5 w-full">
-                  <label className="text-sm font-bold text-offblack">Cantidad de turnos / mascotas</label>
-                  <select
-                    value={manualQuantity}
-                    onChange={(e) => setManualQuantity(Number(e.target.value))}
-                    className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
-                  >
-                    {Array.from({ length: selectedServiceObj.max_concurrent_bookings || 1 }, (_, i) => i + 1).map(n => (
-                      <option key={n} value={n}>{n} {n === 1 ? 'Mascota/Turno' : 'Mascotas/Turnos'}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5 w-full">
@@ -754,20 +779,44 @@ export const AdminCalendar: React.FC = () => {
                   ) : (
                     <select
                       value={manualTime}
-                      onChange={(e) => setManualTime(e.target.value)}
+                      onChange={(e) => {
+                        setManualTime(e.target.value);
+                        setManualQuantity(1);
+                      }}
                       className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
                       required
                     >
                       <option value="">Hora...</option>
                       {manualSlots.map((s, idx) => (
                         <option key={idx} value={s.time} disabled={!s.available}>
-                          {s.time} {!s.available ? '(Reservado)' : ''}
+                          {s.time} {!s.available ? '(Reservado)' : `- [${s.remainingCapacity ?? 0}]`}
                         </option>
                       ))}
                     </select>
                   )}
                 </div>
               </div>
+
+              {selectedServiceObj && (
+                <div className="flex flex-col gap-1.5 w-full">
+                  <label className="text-sm font-bold text-offblack">Cantidad de turnos / mascotas</label>
+                  <select
+                    value={manualQuantity}
+                    onChange={(e) => setManualQuantity(Number(e.target.value))}
+                    className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
+                  >
+                    {Array.from({ length: selectedServiceObj.max_concurrent_bookings || 1 }, (_, i) => i + 1).map(n => {
+                      const isDisabled = n > remainingCapacity;
+
+                      return (
+                        <option key={n} value={n} disabled={isDisabled}>
+                          {n} {n === 1 ? 'Mascota/Turno' : 'Mascotas/Turnos'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
 
               <div className="flex flex-col gap-1.5 w-full">
                 <label className="text-sm font-bold text-offblack">Notas Internas (Opcional)</label>
