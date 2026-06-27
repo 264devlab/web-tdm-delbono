@@ -231,12 +231,12 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
     if (normalizedPhone !== phone) {
       setPhone(normalizedPhone); // Update input with normalized phone
     }
-    
+
     if (normalizedPhone.length < 10) {
       setClientFormError('Por favor ingrese un teléfono válido de al menos 10 dígitos.');
       return;
     }
-    
+
     setClientFormError('');
     setLoadingClient(true);
 
@@ -753,7 +753,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
               {/* Time Slots */}
               <div className="flex flex-col gap-2 justify-start">
                 <label className="text-sm font-bold text-offblack flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-primary" /> Horarios Disponibles
+                  <Clock className="h-4 w-4 text-primary" /> Horarios Disponiblessss
                 </label>
 
                 {!bookingDate ? (
@@ -783,7 +783,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                           }`}
                         title={slot.reason}
                       >
-                        {slot.time}
+                        {slot.time} <span> [{slot.remainingCapacity}] </span>
                       </button>
                     ))}
                   </div>
