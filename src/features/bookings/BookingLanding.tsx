@@ -231,12 +231,12 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
     if (normalizedPhone !== phone) {
       setPhone(normalizedPhone); // Update input with normalized phone
     }
-    
+
     if (normalizedPhone.length < 10) {
       setClientFormError('Por favor ingrese un teléfono válido de al menos 10 dígitos.');
       return;
     }
-    
+
     setClientFormError('');
     setLoadingClient(true);
 
@@ -752,9 +752,16 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
 
               {/* Time Slots */}
               <div className="flex flex-col gap-2 justify-start">
-                <label className="text-sm font-bold text-offblack flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-primary" /> Horarios Disponibles
-                </label>
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-offblack flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" /> Horarios Disponibles
+                  </label>
+                  {bookingDate && !loadingSlots && availableSlots.length > 0 && (
+                    <p className="text-[10px] text-gray-400 font-semibold leading-tight">
+                      El número <span className="text-secondary font-bold">[x]</span> indica la cantidad de turnos disponibles.
+                    </p>
+                  )}
+                </div>
 
                 {!bookingDate ? (
                   <div className="p-6 bg-neutral-50 border border-dashed border-neutral-200 text-center text-sm font-bold text-gray-400 rounded-xl flex-1 flex items-center justify-center">
@@ -783,7 +790,7 @@ export const BookingLanding: React.FC<BookingLandingProps> = ({ settings }) => {
                           }`}
                         title={slot.reason}
                       >
-                        {slot.time}
+                        {slot.time} <span className={selectedTime === slot.time ? 'text-white/80' : 'text-secondary font-extrabold'}> [{slot.remainingCapacity}] </span>
                       </button>
                     ))}
                   </div>
