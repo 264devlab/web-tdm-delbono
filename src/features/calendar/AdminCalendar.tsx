@@ -801,9 +801,10 @@ export const AdminCalendar: React.FC = () => {
                 <div className="flex flex-col gap-1.5 w-full">
                   <label className="text-sm font-bold text-offblack">Cantidad de turnos / mascotas</label>
                   <select
+                    disabled={!manualDate || !manualTime}
                     value={manualQuantity}
                     onChange={(e) => setManualQuantity(Number(e.target.value))}
-                    className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary"
+                    className="border border-neutral-200 p-2.5 rounded-lg w-full bg-white text-sm font-semibold focus:outline-none focus:border-primary disabled:bg-neutral-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     {Array.from({ length: selectedServiceObj.max_concurrent_bookings || 1 }, (_, i) => i + 1).map(n => {
                       const isDisabled = n > remainingCapacity;
