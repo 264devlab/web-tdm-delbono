@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
 import { Card, CardContent } from '../../components/ui/Card';
 import { formatCurrency, formatDate } from '../../utils/format';
@@ -12,7 +13,8 @@ import {
   HelpCircle,
   AlertCircle,
   Award,
-  CheckCircle
+  CheckCircle,
+  ChevronDown
 } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
@@ -68,6 +70,7 @@ interface BookingWithClientAndService {
 }
 
 export const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     todayCount: 0,
     weekCount: 0,
@@ -85,6 +88,12 @@ export const AdminDashboard: React.FC = () => {
   const [peakHours, setPeakHours] = useState<{ hour: string; count: number }[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Estado para el acordeón de próximos turnos
+  const [isUpcomingExpanded, setIsUpcomingExpanded] = useState<boolean>(false);
+
+  // Estado para el acordeón de turnos pasados
+  const [isPastExpanded, setIsPastExpanded] = useState<boolean>(false);
 
   // Collected amount modal states (for price 0 bookings completed)
   const [isCollectedAmountModalOpen, setIsCollectedAmountModalOpen] = useState<boolean>(false);
@@ -362,7 +371,7 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 text-left">
+    <div className="space-y-8 text-left mb-10">
       {/* Dashboard Heading */}
       <div className="border-b border-neutral-100 pb-4 flex items-center justify-between">
         <div>
@@ -375,9 +384,12 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Grid containing Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
         {/* Metric 1 */}
-        <Card className="border border-neutral-100 shadow-sm relative group">
+        <Card 
+          onClick={() => navigate('/admin/calendar')}
+          className="border border-neutral-100 shadow-sm relative group cursor-pointer hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+        >
           <CardContent className="flex items-center gap-3 py-5">
             <div className="bg-primary/10 text-primary p-2.5 rounded-xl flex-shrink-0">
               <Calendar className="h-5 w-5" />
@@ -390,7 +402,10 @@ export const AdminDashboard: React.FC = () => {
               </span>
             </div>
             <button
-              onClick={() => openHelpModal('Turnos de Hoy', 'Muestra la cantidad de citas agendadas para el día de hoy, junto con un resumen de los turnos programados para la semana y el mes actual. Te ayuda a planificar el flujo de trabajo diario.')}
+              onClick={(e) => {
+                e.stopPropagation();
+                openHelpModal('Turnos de Hoy', 'Muestra la cantidad de citas agendadas para el día de hoy, junto con un resumen de los turnos programados para la semana y el mes actual. Te ayuda a planificar el flujo de trabajo diario.');
+              }}
               className="text-gray-300 hover:text-gray-500 absolute top-2 right-2 cursor-pointer transition-colors"
             >
               <HelpCircle className="h-3.5 w-3.5" />
@@ -399,7 +414,10 @@ export const AdminDashboard: React.FC = () => {
         </Card>
 
         {/* Metric 2 */}
-        <Card className="border border-neutral-100 shadow-sm relative group">
+        <Card 
+          onClick={() => navigate('/admin/clients')}
+          className="border border-neutral-100 shadow-sm relative group cursor-pointer hover:border-secondary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+        >
           <CardContent className="flex items-center gap-3 py-5">
             <div className="bg-secondary/10 text-secondary p-2.5 rounded-xl flex-shrink-0">
               <Users className="h-5 w-5" />
@@ -410,7 +428,10 @@ export const AdminDashboard: React.FC = () => {
               <span className="text-[9px] font-semibold text-gray-400 block mt-1">Registrados</span>
             </div>
             <button
-              onClick={() => openHelpModal('Clientes Registrados', 'Indica el número total de clientes únicos guardados en la base de datos (identificados por su correo electrónico único). Te da una idea del tamaño de tu cartera de clientes.')}
+              onClick={(e) => {
+                e.stopPropagation();
+                openHelpModal('Clientes Registrados', 'Indica el número total de clientes únicos guardados en la base de datos (identificados por su correo electrónico único). Te da una idea del tamaño de tu cartera de clientes.');
+              }}
               className="text-gray-300 hover:text-gray-500 absolute top-2 right-2 cursor-pointer transition-colors"
             >
               <HelpCircle className="h-3.5 w-3.5" />
@@ -479,223 +500,267 @@ export const AdminDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Turnos Pasados por Confirmar */}
-      {pastUnresolvedBookings.length > 0 && (
-        <div className="bg-amber-50/20 border border-amber-200/50 p-6 rounded-2xl space-y-4">
-          <div className="flex items-center justify-between border-b border-amber-200/30 pb-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-600 animate-pulse" />
-              <h3 className="text-lg font-bold text-amber-900 m-0">Turnos Pasados Pendientes de Cerrar</h3>
-            </div>
-            <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full">
-              {pastUnresolvedBookings.length} {pastUnresolvedBookings.length === 1 ? 'turno pendiente' : 'turnos pendientes'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {pastUnresolvedBookings.map((b) => (
-              <div
-                key={b.id}
-                className="bg-white border border-amber-150 p-4 rounded-xl flex flex-col justify-between gap-3 shadow-xs transition-all hover:shadow-sm"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="bg-amber-50 border border-amber-100 text-[10px] font-bold px-2 py-0.5 rounded-full text-amber-700">
-                      {formatDate(b.booking_date)} | {b.booking_time.substring(0, 5)} hs
-                    </span>
-                    <span className="text-[10px] font-bold text-gray-400">
-                      Seña: ${formatCurrency(b.deposit_amount)}
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-sm text-offblack">{b.services?.name}</h4>
-                  <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 flex-wrap">
-                    Cliente: <strong>{b.clients?.first_name} {b.clients?.last_name}</strong> ({b.clients?.phone})
-                    {b.clientReputation?.isConflictive && (
-                      <span className="bg-danger/10 text-danger text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center">
-                        ⚠️ Alerta: {Math.round(b.clientReputation.rate * 100)}% ausencias
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleUpdateStatus(b.id, 'COMPLETED')}
-                    disabled={updatingId !== null}
-                    className="flex-1 py-2 px-3 bg-success text-white text-xs font-bold rounded-lg cursor-pointer transition-all hover:opacity-90 flex items-center justify-center gap-1 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Marcar Completado
-                  </button>
-                  <button
-                    onClick={() => handleUpdateStatus(b.id, 'NO_SHOW')}
-                    disabled={updatingId !== null}
-                    className="flex-1 py-2 px-3 bg-neutral-100 hover:bg-neutral-200 text-offblack border border-neutral-200 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Marcar Ausente
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Main Layout Section: Asymmetric grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Side: Upcoming Bookings (col-span 2) */}
-        <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-lg font-bold text-offblack flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" /> Próximos Turnos Agendados
-          </h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-12">
 
-          {upcomingBookings.length === 0 ? (
-            <div className="p-8 bg-white border border-dashed border-neutral-200 text-center text-gray-400 font-bold rounded-2xl">
-              No hay turnos pendientes para hoy ni fechas futuras.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {upcomingBookings.map((b) => (
-                <div
-                  key={b.id}
-                  className="bg-white border border-neutral-100 p-4 rounded-xl flex items-center justify-between gap-4 shadow-xs transition-all hover:border-primary/30 hover:shadow-sm"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-neutral-50 border border-neutral-100 text-[10px] font-bold px-2 py-0.5 rounded-full text-gray-500">
-                        {formatDate(b.booking_date)} | {b.booking_time.substring(0, 5)} hs
+        {/* Clientes Frecuentes */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-offblack flex items-center gap-2">
+              <Award className="h-5 w-5 text-amber-500" /> Clientes Frecuentes
+            </h3>
+            <button
+              onClick={() => openHelpModal('Clientes Frecuentes', 'Lista a los 3 clientes que tienen más visitas finalizadas (turnos en estado "Completado") en la petshop. Te permite identificar a tus clientes más fieles para ofrecerles descuentos o atenciones.')}
+              className="text-gray-300 hover:text-gray-500 cursor-pointer transition-colors"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          </div>
+          <Card className="border border-neutral-100 shadow-sm">
+            <CardContent className="py-4 space-y-4">
+              {topClients.length === 0 ? (
+                <p className="text-sm text-gray-400 font-semibold py-2">Sin datos de visitas finalizadas.</p>
+              ) : (
+                topClients.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between border-b border-neutral-50 pb-3 last:border-none last:pb-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="bg-amber-50 text-amber-700 w-6 h-6 text-xs font-bold flex items-center justify-center rounded-full flex-shrink-0">
+                        {idx + 1}
                       </span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(b.status)}`}>
-                        {translateStatus(b.status)}
-                      </span>
+                      <div className="min-w-0">
+                        <span className="font-bold text-sm text-offblack block truncate">{item.name}</span>
+                        <span className="text-[10px] text-gray-400 font-semibold">{item.phone}</span>
+                      </div>
                     </div>
-                    <h4 className="font-bold text-base text-offblack">{b.services?.name}</h4>
-                    <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 flex-wrap">
-                      Cliente: <strong>{b.clients?.first_name} {b.clients?.last_name}</strong> ({b.clients?.phone})
-                      {b.clientReputation?.isConflictive && (
-                        <span className="bg-danger/10 text-danger text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center">
-                          ⚠️ Alerta: {Math.round(b.clientReputation.rate * 100)}% ausencias
-                        </span>
-                      )}
-                    </p>
+                    <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0">
+                      {item.count} {item.count === 1 ? 'visita' : 'visitas'}
+                    </span>
                   </div>
-                  {b.deposit_amount > 0 && (
-                    <div className="text-right">
-                      <span className="text-[10px] font-bold text-gray-400 block uppercase">Seña MP</span>
-                      <span className="text-sm font-extrabold text-success">${formatCurrency(b.deposit_amount)}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                ))
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Right Side: Popular Services & Stats (col-span 1) */}
-        <div className="space-y-6">
-          {/* Popular services */}
-          <div className="space-y-4">
+        {/* Popular services */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold text-offblack flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-secondary" /> Servicios más Solicitados
+          </h3>
+          <Card className="border border-neutral-100 shadow-sm">
+            <CardContent className="py-4 space-y-4">
+              {popularServices.length === 0 ? (
+                <p className="text-sm text-gray-400 font-semibold py-2">Sin datos de servicios registrados.</p>
+              ) : (
+                popularServices.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between border-b border-neutral-50 pb-3 last:border-none last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-neutral-100 text-offblack w-6 h-6 text-xs font-bold flex items-center justify-center rounded-full">
+                        {idx + 1}
+                      </span>
+                      <span className="font-bold text-sm text-offblack">{item.name}</span>
+                    </div>
+                    <span className="bg-secondary/10 text-secondary text-[10px] font-bold px-2.5 py-1 rounded-full">
+                      {item.count} turnos
+                    </span>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Horas Pico de Demanda */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-offblack flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-secondary" /> Servicios más Solicitados
+              <Clock className="h-5 w-5 text-sky-500" /> Horas Pico de Demanda
             </h3>
-            <Card className="border border-neutral-100 shadow-sm">
-              <CardContent className="py-4 space-y-4">
-                {popularServices.length === 0 ? (
-                  <p className="text-sm text-gray-400 font-semibold py-2">Sin datos de servicios registrados.</p>
-                ) : (
-                  popularServices.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between border-b border-neutral-50 pb-3 last:border-none last:pb-0">
-                      <div className="flex items-center gap-2">
-                        <span className="bg-neutral-100 text-offblack w-6 h-6 text-xs font-bold flex items-center justify-center rounded-full">
-                          {idx + 1}
-                        </span>
-                        <span className="font-bold text-sm text-offblack">{item.name}</span>
-                      </div>
-                      <span className="bg-secondary/10 text-secondary text-[10px] font-bold px-2.5 py-1 rounded-full">
-                        {item.count} turnos
-                      </span>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+            <button
+              onClick={() => openHelpModal('Horas Pico de Demanda', 'Muestra las 3 franjas horarias más agendadas históricamente. Útil para conocer en qué momentos del día se registra mayor concurrencia y planificar los recursos de la petshop.')}
+              className="text-gray-300 hover:text-gray-500 cursor-pointer transition-colors"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
           </div>
-
-          {/* Clientes Frecuentes */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-offblack flex items-center gap-2">
-                <Award className="h-5 w-5 text-amber-500" /> Clientes Frecuentes
-              </h3>
-              <button
-                onClick={() => openHelpModal('Clientes Frecuentes', 'Lista a los 3 clientes que tienen más visitas finalizadas (turnos en estado "Completado") en la petshop. Te permite identificar a tus clientes más fieles para ofrecerles descuentos o atenciones.')}
-                className="text-gray-300 hover:text-gray-500 cursor-pointer transition-colors"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </div>
-            <Card className="border border-neutral-100 shadow-sm">
-              <CardContent className="py-4 space-y-4">
-                {topClients.length === 0 ? (
-                  <p className="text-sm text-gray-400 font-semibold py-2">Sin datos de visitas finalizadas.</p>
-                ) : (
-                  topClients.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between border-b border-neutral-50 pb-3 last:border-none last:pb-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="bg-amber-50 text-amber-700 w-6 h-6 text-xs font-bold flex items-center justify-center rounded-full flex-shrink-0">
-                          {idx + 1}
-                        </span>
-                        <div className="min-w-0">
-                          <span className="font-bold text-sm text-offblack block truncate">{item.name}</span>
-                          <span className="text-[10px] text-gray-400 font-semibold">{item.phone}</span>
-                        </div>
-                      </div>
-                      <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0">
-                        {item.count} {item.count === 1 ? 'visita' : 'visitas'}
+          <Card className="border border-neutral-100 shadow-sm">
+            <CardContent className="py-4 space-y-4">
+              {peakHours.length === 0 ? (
+                <p className="text-sm text-gray-400 font-semibold py-2">Sin datos de horarios.</p>
+              ) : (
+                peakHours.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between border-b border-neutral-50 pb-3 last:border-none last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-sky-50 text-sky-700 w-6 h-6 text-xs font-bold flex items-center justify-center rounded-full">
+                        {idx + 1}
                       </span>
+                      <span className="font-bold text-sm text-offblack">{item.hour} hs</span>
                     </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+                    <span className="bg-sky-50 text-sky-700 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                      {item.count} {item.count === 1 ? 'turno' : 'turnos'}
+                    </span>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Upcoming Bookings (col-span 2) */}
+      <div className="lg:col-span-2 mb-6">
+        {/* Cabecera interactiva del Acordeón */}
+        <button
+          onClick={() => setIsUpcomingExpanded(!isUpcomingExpanded)}
+          className="w-full flex items-center justify-between border-b pb-3 border-neutral-100 text-left focus:outline-none group cursor-pointer mb-4"
+        >
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-bold text-offblack flex items-center gap-2 m-0 select-none">
+              <Clock className="h-5 w-5 text-primary" /> Próximos Turnos Agendados
+            </h3>
+            {upcomingBookings.length > 0 && (
+              <span className="bg-primary/10 text-primary text-xs font-extrabold px-2.5 py-0.5 rounded-full">
+                {upcomingBookings.length}
+              </span>
+            )}
           </div>
+          <ChevronDown
+            className={`h-5 w-5 text-amber-600 group-hover:text-amber-800 transition-transform duration-200 ${isUpcomingExpanded ? 'rotate-180' : ''
+              }`}
+          />
+        </button>
 
-          {/* Horas Pico de Demanda */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-offblack flex items-center gap-2">
-                <Clock className="h-5 w-5 text-sky-500" /> Horas Pico de Demanda
-              </h3>
-              <button
-                onClick={() => openHelpModal('Horas Pico de Demanda', 'Muestra las 3 franjas horarias más agendadas históricamente. Útil para conocer en qué momentos del día se registra mayor concurrencia y planificar los recursos de la petshop.')}
-                className="text-gray-300 hover:text-gray-500 cursor-pointer transition-colors"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </div>
-            <Card className="border border-neutral-100 shadow-sm">
-              <CardContent className="py-4 space-y-4">
-                {peakHours.length === 0 ? (
-                  <p className="text-sm text-gray-400 font-semibold py-2">Sin datos de horarios.</p>
-                ) : (
-                  peakHours.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between border-b border-neutral-50 pb-3 last:border-none last:pb-0">
+        {/* Contenido desplegable con transición suave */}
+        <div
+          className={`grid transition-all duration-300 ease-in-out ${isUpcomingExpanded
+            ? 'grid-rows-[1fr] opacity-100'
+            : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+            }`}
+        >
+          <div className="overflow-hidden">
+            {upcomingBookings.length === 0 ? (
+              <div className="p-8 bg-white border border-dashed border-neutral-200 text-center text-gray-400 font-bold rounded-2xl">
+                No hay turnos pendientes para hoy ni fechas futuras.
+              </div>
+            ) : (
+              <div className="space-y-3 pt-1">
+                {upcomingBookings.map((b) => (
+                  <div
+                    key={b.id}
+                    className="bg-white border border-neutral-100 p-4 rounded-xl flex items-center justify-between gap-4 shadow-xs transition-all hover:border-primary/30 hover:shadow-sm"
+                  >
+                    <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="bg-sky-50 text-sky-700 w-6 h-6 text-xs font-bold flex items-center justify-center rounded-full">
-                          {idx + 1}
+                        <span className="bg-neutral-50 border border-neutral-100 text-[10px] font-bold px-2 py-0.5 rounded-full text-gray-500">
+                          {formatDate(b.booking_date)} | {b.booking_time.substring(0, 5)} hs
                         </span>
-                        <span className="font-bold text-sm text-offblack">{item.hour} hs</span>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${getStatusBadgeClass(b.status)}`}>
+                          {translateStatus(b.status)}
+                        </span>
                       </div>
-                      <span className="bg-sky-50 text-sky-700 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                        {item.count} {item.count === 1 ? 'turno' : 'turnos'}
-                      </span>
+                      <h4 className="font-bold text-base text-offblack">{b.services?.name}</h4>
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 flex-wrap">
+                        Cliente: <strong>{b.clients?.first_name} {b.clients?.last_name}</strong> ({b.clients?.phone})
+                        {b.clientReputation?.isConflictive && (
+                          <span className="bg-danger/10 text-danger text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center">
+                            ⚠️ Alerta: {Math.round(b.clientReputation.rate * 100)}% ausencias
+                          </span>
+                        )}
+                      </p>
                     </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+                    {b.deposit_amount > 0 && (
+                      <div className="text-right">
+                        <span className="text-[10px] font-bold text-gray-400 block uppercase">Seña MP</span>
+                        <span className="text-sm font-extrabold text-success">${formatCurrency(b.deposit_amount)}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Turnos Pasados por Confirmar */}
+      {pastUnresolvedBookings.length > 0 && (
+        <div className="">
+          {/* Cabecera interactiva del Acordeón */}
+          <button
+            onClick={() => setIsPastExpanded(!isPastExpanded)}
+            className="w-full flex items-center justify-between border-b border-neutral-200 pb-3 focus:outline-none group cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600 animate-pulse" />
+              <h3 className="text-lg font-bold text-offblack m-0 select-none">Turnos Pasados Pendientes de Cerrar</h3>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full">
+                {pastUnresolvedBookings.length} {pastUnresolvedBookings.length === 1 ? 'turno pendiente' : 'turnos pendientes'}
+              </span>
+              <ChevronDown
+                className={`h-5 w-5 text-amber-600 group-hover:text-amber-800 transition-transform duration-200 ${isPastExpanded ? 'rotate-180' : ''}`}
+              />
+            </div>
+          </button>
+
+          {/* Contenido desplegable con transición suave */}
+          <div
+            className={`grid transition-all duration-300 ease-in-out ${isPastExpanded
+              ? 'grid-rows-[1fr] opacity-100 mt-4'
+              : 'grid-rows-[0fr] opacity-0 pointer-events-none mt-0'
+              }`}
+          >
+            <div className="overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                {pastUnresolvedBookings.map((b) => (
+                  <div
+                    key={b.id}
+                    className="bg-white border border-amber-150 p-4 rounded-xl flex flex-col justify-between gap-3 shadow-xs transition-all hover:shadow-sm"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="bg-amber-50 border border-amber-100 text-[10px] font-bold px-2 py-0.5 rounded-full text-amber-700">
+                          {formatDate(b.booking_date)} | {b.booking_time.substring(0, 5)} hs
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-400">
+                          Seña: ${formatCurrency(b.deposit_amount)}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-sm text-offblack">{b.services?.name}</h4>
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 flex-wrap">
+                        Cliente: <strong>{b.clients?.first_name} {b.clients?.last_name}</strong> ({b.clients?.phone})
+                        {b.clientReputation?.isConflictive && (
+                          <span className="bg-danger/10 text-danger text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-flex items-center">
+                            ⚠️ Alerta: {Math.round(b.clientReputation.rate * 100)}% ausencias
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleUpdateStatus(b.id, 'COMPLETED')}
+                        disabled={updatingId !== null}
+                        className="flex-1 py-2 px-3 bg-success text-white text-xs font-bold rounded-lg cursor-pointer transition-all hover:opacity-90 flex items-center justify-center gap-1 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Marcar Completado
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(b.id, 'NO_SHOW')}
+                        disabled={updatingId !== null}
+                        className="flex-1 py-2 px-3 bg-neutral-100 hover:bg-neutral-200 text-offblack border border-neutral-200 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Marcar Ausente
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL PARA SOLICITAR MONTO COBRADO (SERVICIOS SIN PRECIO DEFINIDO) */}
       <Modal

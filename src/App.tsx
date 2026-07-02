@@ -54,7 +54,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout, settings, 
 
   // Navigation Items
   const navItems = [
-    { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin', label: 'Inicio', icon: LayoutDashboard },
     { path: '/admin/calendar', label: 'Calendario', icon: Calendar },
     { path: '/admin/services', label: 'Servicios', icon: Briefcase },
     { path: '/admin/clients', label: 'Clientes', icon: Users },
@@ -84,10 +84,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout, settings, 
         <div className="p-5 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img 
-                src={logoUrl} 
-                alt="Logo" 
-                className={`h-9 w-9 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className={`h-9 w-9 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`}
               />
               <div className="text-left">
                 <h2 className="text-sm font-extrabold text-offblack m-0">Panel Control</h2>
@@ -118,8 +118,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ session, onLogout, settings, 
                     }
                   }}
                   className={`flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-xl transition-all no-underline ${isActive
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-offblack hover:bg-neutral-50'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-offblack hover:bg-neutral-50'
                     }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -245,10 +245,10 @@ const AdminLogin: React.FC<{ settings: any; settingsLoaded: boolean }> = ({ sett
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
             <div className="bg-primary/10 text-primary p-3 rounded-xl">
-              <img 
-                src={logoUrl} 
-                alt="Logo" 
-                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`}
               />
             </div>
           </div>
@@ -400,10 +400,10 @@ const ResetPassword: React.FC<{ onComplete: () => void; settings: any; settingsL
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
             <div className="bg-primary/10 text-primary p-3 rounded-xl">
-              <img 
-                src={logoUrl} 
-                alt="Logo" 
-                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`}
               />
             </div>
           </div>
@@ -477,10 +477,10 @@ const AppContent: React.FC<{
         <header className="bg-white/80 backdrop-blur-md border-b border-neutral-100 sticky top-0 z-[100] py-4 px-6 shadow-sm shadow-amber-950/[0.01]">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2.5 text-offblack no-underline">
-              <img 
-                src={logoUrl} 
-                alt="Logo" 
-                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`}
               />
               <div className="text-left">
                 <span className="font-extrabold text-base sm:text-lg tracking-tight block">
@@ -521,10 +521,10 @@ const AppContent: React.FC<{
             onClick={() => window.dispatchEvent(new Event('reset_booking_flow'))}
             className="flex items-center gap-2.5 text-offblack no-underline"
           >
-            <img 
-              src={logoUrl} 
-              alt="Logo" 
-              className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`} 
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className={`h-10 w-10 object-contain transition-opacity duration-300 ${!settings && !settingsLoaded ? 'opacity-0' : 'opacity-100'}`}
             />
             <div className="text-left">
               <span className="font-extrabold text-base sm:text-lg tracking-tight block">
@@ -576,10 +576,10 @@ const AppContent: React.FC<{
             {settings?.instagram && (
               <>
                 <span>•</span>
-                <a 
-                  href={`https://instagram.com/${settings.instagram}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <a
+                  href={`https://instagram.com/${settings.instagram}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-primary transition-colors no-underline text-gray-400 flex items-center gap-1.5"
                 >
                   <svg className="h-3.5 w-3.5 text-gray-400 hover:text-primary fill-none stroke-current stroke-2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
@@ -594,10 +594,10 @@ const AppContent: React.FC<{
             {settings?.facebook && (
               <>
                 <span>•</span>
-                <a 
-                  href={`https://facebook.com/${settings.facebook}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <a
+                  href={`https://facebook.com/${settings.facebook}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-primary transition-colors no-underline text-gray-400 flex items-center gap-1.5"
                 >
                   <svg className="h-3.5 w-3.5 text-gray-400 hover:text-primary fill-none stroke-current stroke-2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
@@ -615,10 +615,10 @@ const AppContent: React.FC<{
             <span className="hidden sm:inline">•</span>
             <span>
               Desarrollado por{' '}
-              <a 
-                href="https://www.264devlab.com.ar" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.264devlab.com.ar"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hover:text-primary transition-colors font-bold no-underline text-gray-400"
               >
                 264DevLab
@@ -663,7 +663,7 @@ export default function App() {
           setSettings(data[0]);
           try {
             localStorage.setItem('tdm_delbono_settings', JSON.stringify(data[0]));
-          } catch (_) {}
+          } catch (_) { }
         }
       } catch (err) {
         console.warn('Error loading settings:', err);
